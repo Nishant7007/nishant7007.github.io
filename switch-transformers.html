@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Switch Transformers — Condensed Rewrite</title>
+<style>
+  :root {
+    --text: #1a1a1a;
+    --muted: #555;
+    --accent: #8B4513;
+    --bg: #fafaf7;
+    --code-bg: #f0ede5;
+    --rule: #ddd6c8;
+  }
+  body {
+    font-family: Charter, 'Iowan Old Style', Georgia, Cambria, 'Times New Roman', serif;
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+    font-size: 17px;
+  }
+  h1 {
+    font-size: 1.9rem;
+    line-height: 1.25;
+    margin-bottom: 0.3rem;
+    font-weight: 700;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+  }
+  h2 {
+    font-size: 1.35rem;
+    margin-top: 2.8rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--rule);
+    font-weight: 700;
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 1.1rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+  p { margin: 0 0 1rem; }
+  .math {
+    font-family: 'Cambria Math', 'STIX Two Math', 'Latin Modern Math', Cambria, Georgia, serif;
+    font-style: italic;
+    white-space: nowrap;
+  }
+  .math-up {
+    font-style: normal;
+  }
+  code {
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code-bg);
+    padding: 1rem;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+    margin-left: 0;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .equation {
+    font-family: 'Cambria Math', 'STIX Two Math', Cambria, Georgia, serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    text-align: center;
+    margin: 1.3rem 0;
+    padding: 0.5rem;
+  }
+  .equation .label {
+    font-style: normal;
+    font-family: Charter, Georgia, serif;
+    color: var(--muted);
+    font-size: 0.85rem;
+    float: right;
+    margin-top: 0.3rem;
+  }
+  .callout {
+    background: #fff8e8;
+    border-left: 3px solid #d4a341;
+    padding: 0.8rem 1rem;
+    margin: 1.2rem 0;
+    border-radius: 3px;
+    font-size: 0.96rem;
+  }
+  .qa {
+    margin: 1rem 0 1.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--rule);
+  }
+  .qa .q { font-weight: 700; margin-bottom: 0.3rem; }
+  .qa .a { color: #333; }
+  .tldr {
+    background: #eef3ee;
+    border: 1px solid #cfd9cf;
+    padding: 1rem 1.2rem;
+    border-radius: 5px;
+    margin: 1.5rem 0 2rem;
+    font-size: 0.98rem;
+  }
+  .tldr strong { color: var(--accent); }
+  em { color: #333; }
+  sub, sup { font-size: 0.75em; }
+  @media print {
+    body { background: white; font-size: 12pt; }
+    h2 { page-break-after: avoid; }
+    h3 { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Switch Transformers: Scaling to Trillion-Parameter Models with Simple and Efficient Sparsity</h1>
+<div class="subtitle">Fedus, Zoph, Shazeer — JMLR 2022 — condensed rewrite for Applied Scientist interview prep</div>
+
+<div class="tldr">
+<strong>One-sentence contribution:</strong> Mixture-of-Experts works much better if you route each token to exactly one expert (not top-k), and with a few training tricks (selective fp32 precision in the router, smaller init scale, heavier dropout inside experts during fine-tuning), you can scale to 1.6T parameters and get ~7× pretraining speedup over a FLOP-matched T5 baseline.
+</div>
+
+<h2>1. The problem and why it matters</h2>
+
+<p>By 2020, the dominant recipe for improving language models was "make the dense Transformer bigger." Kaplan et al.'s scaling laws had shown clean power-law returns on parameter count, data, and compute. But dense scaling has a brutal property: every parameter is used for every token, so parameter count and FLOPs per token are locked together. You can't scale one without paying for the other.</p>
+
+<p>Mixture-of-Experts (MoE) breaks that coupling. The idea, going back to Jacobs et al. (1991) and revived for modern deep learning by Shazeer et al. (2017), is to have many expert sub-networks and route each input to a small subset of them. Parameters grow with the number of experts; compute per token stays fixed. In principle, this is the ideal scaling axis — more capacity without more FLOPs.</p>
+
+<p>In practice, MoE had not caught on. Three things blocked it: <em>(a)</em> the routing algorithm was complex (top-2 experts per token, auxiliary losses for load balancing <em>and</em> importance weighting), <em>(b)</em> communication costs from all-to-all dispatch were substantial, and <em>(c)</em> training was unstable, especially in low precision. GShard (Lepikhin et al. 2020) had shown MoE could work at 600B+ parameters for translation, but had to train entirely in float32.</p>
+
+<p>The gap this paper fills: it simplifies MoE enough that it becomes a drop-in replacement for the FFN layer in a standard Transformer, trains stably in bfloat16, and works not just for translation but across pretraining, fine-tuning, and multilingual settings. It's the paper that made sparse expert models a serious tool in the LLM toolkit.</p>
+
+<h2>2. Key prior work, compressed</h2>
+
+<p><strong>Shazeer et al. (2017) — "Outrageously Large Neural Networks."</strong> Introduced the modern MoE layer: a router produces a softmax over N experts, picks the top-k (k=2 was the default), and the output is a weighted sum of the selected experts' computations. They argued k≥2 was necessary, the reasoning being that you need at least two experts active to get a meaningful gradient signal through the router — if you only route to one, the gradient through the discrete routing decision is degenerate. Two auxiliary losses kept things balanced: a load-balancing loss and a separate importance-weighting loss.</p>
+
+<p><strong>GShard (Lepikhin et al. 2020).</strong> Scaled MoE into the Transformer at hundreds of billions of parameters for machine translation. Folded the two auxiliary losses into one simpler balancing loss. Trained in float32 throughout because bfloat16 made the router softmax unstable. Established that expert parallelism (sharding different experts to different devices) plus all-to-all communication was the right distributed training pattern. This is the direct predecessor to Switch — Switch is essentially "GShard, but simpler and stable in bfloat16."</p>
+
+<h2>3. The core idea</h2>
+
+<p>The central claim is almost deliberately provocative: <em>route each token to exactly one expert</em>. Top-1 routing. Shazeer's intuition that you needed k≥2 for learning is wrong, or at least not load-bearing, as long as you set up the loss correctly.</p>
+
+<p>Here's why it works. In an MoE layer, each token <span class="math">x</span> goes through a router that computes logits <span class="math">h(x) = W<sub>r</sub> · x</span> and a softmax over <span class="math">N</span> experts:</p>
+
+<div class="equation">
+  p<sub>i</sub>(x) &nbsp;=&nbsp; e<sup>&nbsp;h(x)<sub>i</sub></sup> &nbsp;/&nbsp; &Sigma;<sub>j=1</sub><sup>N</sup> e<sup>&nbsp;h(x)<sub>j</sub></sup>
+</div>
+
+<p>In classic top-k MoE, you pick the top-k experts indexed by set <span class="math">&#x1D4AF;</span> and output a weighted combination:</p>
+
+<div class="equation">
+  y &nbsp;=&nbsp; &Sigma;<sub>i &isin; &#x1D4AF;</sub> &nbsp; p<sub>i</sub>(x) &middot; E<sub>i</sub>(x)
+</div>
+
+<p>Switch sets <span class="math">k = 1</span>. Only the single top expert fires. The gate value <span class="math">p<sub>i</sub>(x)</span> still multiplies the output, which is the trick that keeps the router differentiable — even though the argmax selection is discrete, the router's output is scaled by a differentiable probability, so gradients flow back into <span class="math">W<sub>r</sub></span>.</p>
+
+<p>Three wins fall out immediately. The <em>router is cheaper</em> (one expert lookup, not two). The <em>expert capacity can be smaller</em> (each expert processes roughly half the tokens it would under top-2). <em>All-to-all communication shrinks</em> proportionally.</p>
+
+<h3>The load balancing loss</h3>
+
+<p>Top-1 routing has a failure mode: the router could collapse and send everything to one expert. You need a loss that pushes it toward uniform routing. Switch uses a single auxiliary loss — cleaner than Shazeer's two-loss setup — added to the main cross-entropy at each Switch layer:</p>
+
+<div class="equation">
+  &#x2112;<sub>aux</sub> &nbsp;=&nbsp; &alpha; &middot; N &middot; &Sigma;<sub>i=1</sub><sup>N</sup> &nbsp; f<sub>i</sub> &middot; P<sub>i</sub>
+</div>
+
+<p>Walking through each piece:</p>
+
+<ul>
+<li><span class="math">f<sub>i</sub> = (1/T) &Sigma;<sub>x &isin; B</sub> &#x1D7D9;{argmax p(x) = i}</span> — the <em>fraction of tokens</em> actually dispatched to expert <span class="math">i</span>. This is computed from a hard argmax, so it's not differentiable.</li>
+<li><span class="math">P<sub>i</sub> = (1/T) &Sigma;<sub>x &isin; B</sub> p<sub>i</sub>(x)</span> — the <em>average router probability</em> assigned to expert <span class="math">i</span>. This <em>is</em> differentiable.</li>
+<li><span class="math">&alpha; = 10<sup>&minus;2</sup></span> — the balancing coefficient. Big enough to matter, small enough not to drown the main loss.</li>
+<li>The factor of <span class="math">N</span> is a normalizer: under perfect uniform routing, both <span class="math">f<sub>i</sub></span> and <span class="math">P<sub>i</sub></span> equal <span class="math">1/N</span>, so <span class="math">&Sigma; f<sub>i</sub> P<sub>i</sub> = 1/N</span>. Multiplying by <span class="math">N</span> makes the loss value scale-invariant as you vary the number of experts.</li>
+</ul>
+
+<p>Why the <em>dot product</em>? This is the elegant part. You want both vectors to be close to uniform (each entry = <span class="math">1/N</span>). The dot product <span class="math">f &middot; P</span> is minimized, subject to both vectors summing to 1, exactly when both are uniform. The non-differentiable <span class="math">f</span> vector acts as a "scaling" signal per expert, and the gradient flows through <span class="math">P</span>: if expert <span class="math">i</span> is getting too many tokens (large <span class="math">f<sub>i</sub></span>), the loss pushes down on <span class="math">P<sub>i</sub></span>, which reduces future routing probability to that expert.</p>
+
+<div class="callout">
+<strong>Analogy:</strong> Think of <span class="math">f</span> as the "hard vote count" (who actually won each ballot) and <span class="math">P</span> as "average expressed preference." You can't differentiate votes, but you can differentiate preferences. The dot product penalty says: if you're hard-voting for someone, stop expressing high preference for them. That indirect pressure is enough to keep things balanced.
+</div>
+
+<h3>Expert capacity and dropped tokens</h3>
+
+<p>Because TPUs need statically-shaped tensors, each expert has a fixed buffer size:</p>
+
+<div class="equation">
+  expert capacity &nbsp;=&nbsp; (tokens per batch / number of experts) &times; capacity factor
+</div>
+
+<p>If more tokens get routed to an expert than capacity allows, the overflow tokens are <em>dropped</em> — their representation is passed directly through the residual connection, unprocessed. Capacity factor &gt; 1.0 buffers against imbalance at the cost of wasted compute. Switch finds that capacity factor 1.0–1.25 works well with the load-balancing loss; dropped tokens stay under 1%.</p>
+
+<h2>4. Method details that actually matter</h2>
+
+<h3>Architecture</h3>
+
+<p>Take a standard Transformer. Replace the FFN in every other layer with a Switch FFN: N expert FFNs + a router. That's it. Attention stays dense (the paper briefly tried expert attention in Appendix A — showed some quality gains but was unstable in bfloat16, so it wasn't used). Experts are homogeneous — same architecture, different weights.</p>
+
+<h3>Three stability tricks (the load-bearing ones)</h3>
+
+<p><strong>(1) Selective precision.</strong> The whole model runs in bfloat16 except <em>inside the router function</em>, where inputs are cast to float32 for the softmax and then cast back to bfloat16 before the all-to-all dispatch. This is the key to making bfloat16 training work. Crucially, the float32 computation is <em>local</em> to each device — no expensive float32 tensors cross the all-to-all communication. Table 2 shows this: bfloat16 diverges (loss hits −3.78, garbage), float32 works (−1.718), selective precision matches float32 quality (−1.716) at bfloat16 speed (1390 vs 1160 examples/sec).</p>
+
+<p><strong>(2) Smaller initialization.</strong> Initialize weights from a truncated normal with <span class="math">&sigma; = &radic;(s/n)</span> where <span class="math">n</span> is fan-in. The default Transformer uses <span class="math">s = 1.0</span>; Switch uses <span class="math">s = 0.1</span>. This matters a lot: at <span class="math">s = 1.0</span>, neg log perp is &minus;3.60 with std 0.68 across 3 seeds (wildly unstable); at <span class="math">s = 0.1</span>, it's &minus;2.72 with std 0.01. The router's softmax is sensitive to large logits — smaller init keeps logits in a reasonable range early in training.</p>
+
+<p><strong>(3) Expert dropout.</strong> Standard fine-tuning uses dropout 0.1 everywhere. Switch has way more parameters than the FLOP-matched dense baseline, so it overfits more on small downstream tasks. The fix: <em>0.1 dropout on non-expert layers, 0.4 dropout inside experts</em>. Simply raising dropout uniformly hurts; the asymmetric version helps across GLUE, SQuAD, SuperGLUE.</p>
+
+<h3>Data and training setup</h3>
+
+<p>Pre-trained on C4 (Colossal Clean Crawled Corpus) with a masked language modeling / span-corruption objective à la T5. Batch size 2<sup>20</sup> = ~1M tokens, 550k steps, ~576B total tokens. AdamW (standard). All comparisons use 32 TPUv3 cores unless stated otherwise.</p>
+
+<p>The flagship models:</p>
+
+<ul>
+<li><strong>Switch-Base</strong>: 7B params, FLOP-matched to T5-Base (124B FLOPs/seq), 128 experts</li>
+<li><strong>Switch-Large</strong>: 26B params, FLOP-matched to T5-Large (425B FLOPs/seq), 128 experts</li>
+<li><strong>Switch-XXL</strong>: 395B params, FLOP-matched to T5-XXL (6.3T FLOPs/seq), 64 experts</li>
+<li><strong>Switch-C</strong>: 1.6T params, 2048 experts, only 890B FLOPs/seq — massive parameter count, relatively modest FLOPs</li>
+</ul>
+
+<p>Note the design choice in Switch-C: it uses pure expert parallelism (no model parallelism), which is why it can have 2048 experts but only a moderate FLOP budget. Switch-XXL uses expert + model + data parallelism and gets more FLOPs per token at the cost of communication overhead.</p>
+
+<h2>5. Results, honestly</h2>
+
+<p><strong>Pretraining speedups.</strong> The headline: Switch-Base with 64 experts reaches T5-Base's quality 7× faster on a time basis (Fig 5). Against T5-Large (which uses 3.5× more FLOPs per token), Switch-Base still wins, 2.5× speedup on wall clock. Switch-C hits a 4× speedup over T5-XXL.</p>
+
+<p><strong>What the comparison actually proves.</strong> These are <em>FLOP-matched</em> comparisons on identical hardware with identical training budgets. That's the right comparison for the claim "sparse is better than dense at fixed compute." But note the asterisk: Switch has more <em>parameters</em>, so it uses more memory. The speedup is real, but it's not free — you're trading memory for compute efficiency.</p>
+
+<p><strong>Fine-tuning (Table 5).</strong> Gains across GLUE, SuperGLUE, SQuAD, Winogrande, TriviaQA, XSum. The big ones: SuperGLUE +4.4 points for Switch-Base over T5-Base, TriviaQA +6.2 points. But two honest caveats: on ARC (reasoning challenge), T5-Base beats Switch-Base on the Challenge set, and T5-Large beats Switch-Large on the Easy set. So the "universal improvement" framing in the abstract is overstated — reasoning tasks are the weak spot.</p>
+
+<p><strong>Multilingual (101 languages).</strong> mSwitch-Base improves over mT5-Base on every one of 101 languages. 91% of languages get ≥4× speedup to reach mT5's final perplexity. This is a strong result — no cherry-picking, full language coverage.</p>
+
+<p><strong>Distillation.</strong> Compress a 1.1B Switch model into a 223M dense student, preserve 37% of the quality gain. At 99% compression (down from 14.7B to 223M), still retain 28% of the gain. Good but not magical — you pay a real quality tax for going back to dense. Best technique: initialize the student with the teacher's non-expert weights + mix 0.25 teacher / 0.75 hard labels.</p>
+
+<div class="callout">
+<strong>Where the spin is.</strong> Switch-XXL has state-of-the-art pretraining perplexity but <em>does not</em> achieve SOTA on SuperGLUE downstream (87.5 vs T5's 89.3 vs SOTA 90.0). The paper acknowledges this in Appendix E. The upstream–downstream correlation is weaker in the largest regime — a real limitation that's easy to miss. Switch-C with 1.6T parameters actually does worse on SQuAD (87.7) than Switch-XXL (89.6) despite having 4× more parameters, because it has 10× fewer FLOPs per token. So <em>parameters aren't the only thing that matters</em> — FLOPs per token still does real work, especially for reasoning.
+</div>
+
+<h2>6. Ablations that actually teach something</h2>
+
+<p><strong>Switch vs top-2 MoE (Table 1).</strong> At capacity factor 1.0, Switch-Base gets −1.561 at 1000 ex/sec, MoE-Base gets −1.572 at 860 ex/sec. Switch is both faster <em>and</em> slightly better. At 2.0 capacity, they're within noise on quality but Switch is still faster. Teaching: Shazeer's k≥2 argument was wrong in practice. Top-1 doesn't lose quality, and the efficiency gains are real.</p>
+
+<p><strong>Capacity factor sweep.</strong> Counterintuitive finding: MoE actually gets <em>slower</em> going from CF=2.0 to CF=1.25 (840 → 790 ex/sec), while Switch speeds up (860 → 910). This is an implementation quirk but reveals that Switch's simpler routing composes better with low capacity factors — important in the trillion-param regime where memory is tight.</p>
+
+<p><strong>Initialization scale (Table 3).</strong> <span class="math">s = 0.1</span> gives average quality &minus;2.72 with std 0.01 across 3 seeds. <span class="math">s = 1.0</span> gives &minus;3.60 with std 0.68. The std is the real story — it says Switch at default init is a coin flip on whether training even converges. Teaches: router softmax stability is extremely sensitive to init, far more than dense Transformer FFNs.</p>
+
+<p><strong>Expert dropout (Table 4).</strong> Uniform d=0.3 (83.9 GLUE) is worse than d=0.1 everywhere (84.7). Asymmetric d=0.1 base + d=0.4 experts gives 85.2. Teaches: the overfitting problem isn't uniform — it's specifically in the expert layers, because each expert sees a smaller effective fraction of data. Applying more regularization where the problem actually is beats blanket regularization.</p>
+
+<p><strong>No-Token-Left-Behind (Appendix B).</strong> They tried an iterative reroute scheme where overflowed tokens get sent to their second-choice expert. It <em>didn't help</em>. The paper's interpretation: once the network has learned token-expert associations, forcing tokens to their second-best expert at inference degrades the learned specialization. Teaches: expert specialization is real and fragile — don't mess with it at runtime.</p>
+
+<p><strong>Router exploration (Appendix C).</strong> They tried argmax, softmax sampling, input dropout, and multiplicative jitter on router inputs. Input jitter won (&minus;1.468 vs argmax &minus;1.471 — a small but real edge). Softmax sampling was much worse (&minus;1.570). Teaches: the router is learning a contextual bandit; tiny exploration helps, but sampling from the full softmax is too noisy.</p>
+
+<h2>7. Limitations and open questions</h2>
+
+<p><strong>What the authors admit.</strong> Switch-XXL has training instabilities that their tricks don't fully solve. They stop it short of 1M steps because of sporadic divergence. The dependence between FLOPs, parameters, and downstream quality is "poorly understood" (their phrasing, Section 8). Fine-tuning large sparse models is not yet well-characterized.</p>
+
+<p><strong>What's visible between the lines.</strong> The upstream-downstream gap is serious. Switch-C has SOTA-ish perplexity but mediocre SuperGLUE. This suggests either (a) sparse models are learning something different from dense models — maybe more surface-level statistical patterns, less compositional reasoning — or (b) current fine-tuning protocols are badly suited to expert models. The paper doesn't pick a side.</p>
+
+<p><strong>Memory cost is underplayed.</strong> "Same FLOPs" is emphasized repeatedly; "7× the parameters" is mentioned less. A 1.6T-param model needs roughly 3TB of memory just for parameters in bfloat16, not counting optimizer state. Switch-C is only trainable on a TPU pod. Serving it is a separate engineering problem the paper doesn't address.</p>
+
+<p><strong>Expert specialization is not analyzed.</strong> The paper shows load balancing works, but doesn't show <em>what</em> experts specialize in. Do they learn topics? Syntax? Languages? This is a major gap and became a focus of subsequent MoE research (ST-MoE, Mixtral, etc.).</p>
+
+<p><strong>Homogeneous experts are a design choice, not a necessity.</strong> Every expert has the same architecture. Section 8 flags heterogeneous experts (different sizes for different difficulty levels) as future work. This has been picked up in later papers but wasn't tried here.</p>
+
+<h2>8. Why this matters for an LLM / Applied Scientist role</h2>
+
+<p>MoE is now everywhere in frontier LLMs: Mixtral, DeepSeek-V3, Qwen-MoE, GPT-4 (widely believed), Gemini 1.5. Switch is the paper that made this paradigm practical. If you're interviewing for an Applied Scientist role that touches model architecture, scaling, or efficient training, this paper is table stakes.</p>
+
+<p>Production-relevant takeaways: the selective-precision pattern (do the numerically sensitive bit in fp32, cast back to bf16 immediately) is a general technique you'll use anywhere you see softmax instability. The asymmetric dropout pattern generalizes — any time you have a high-capacity sub-module overfitting on small fine-tuning data, consider regularizing <em>that module specifically</em>. The dot-product load balancing loss is a clean template for any auxiliary loss where you want to match two distributions, one differentiable and one not.</p>
+
+<h3>"Walk me through this paper" — a 90-second answer</h3>
+
+<p>"Switch Transformers is the 2021 paper from Google that made Mixture-of-Experts practical at scale. The core move is: replace every other FFN in a Transformer with N expert FFNs plus a router that sends each token to exactly <em>one</em> expert — top-1 routing, whereas prior MoE used top-2 because Shazeer believed you needed multiple active experts for gradient flow. Switch shows that's wrong — you still get gradients through the gate probability that scales the expert output.</p>
+
+<p>The key technical pieces: a simplified load-balancing auxiliary loss that's a dot product between the fraction of tokens routed to each expert and the average router probability, which pushes both toward uniform; selective fp32 precision only inside the router to stabilize bfloat16 training; smaller weight initialization; and heavier dropout inside experts during fine-tuning to prevent overfitting.</p>
+
+<p>They scale to 1.6T parameters, show 7× pretraining speedup over FLOP-matched T5-Base, gains on 101 languages, and distillation rates around 95% compression while preserving ~30% of the quality gain. Limitations: training instability at the largest scale, and the largest sparse models don't always translate upstream perplexity gains to downstream fine-tuning performance, especially on reasoning tasks."</p>
+
+<h3>Likely research-leaning follow-ups</h3>
+
+<div class="qa">
+<div class="q">Q: Why does the load-balancing loss use a dot product specifically? What happens if you use KL divergence or L2 instead?</div>
+<div class="a">The dot product of two probability distributions over N experts is minimized when both are uniform (at value 1/N). It's elegant because the non-differentiable <span class="math">f</span> vector acts as a multiplier on the differentiable <span class="math">P</span> vector — gradients flow only through <span class="math">P</span>, but the gradient magnitude for expert <span class="math">i</span> is scaled by how overloaded <span class="math">f<sub>i</sub></span> actually is. KL divergence against uniform would require the distribution you're diverging from to be differentiable, and you'd need to pick which of <span class="math">f</span> or <span class="math">P</span> gets that role. L2 distance from uniform would work but would need both vectors separately to be pushed toward uniform — redundant if you only have gradients through one. The dot product is the minimal form that gets the job done, and the authors explicitly note they simplified from Shazeer 2017's two-loss design.</div>
+</div>
+
+<div class="qa">
+<div class="q">Q: Top-1 routing means the router's argmax is discrete. How do gradients actually flow back to the router weights?</div>
+<div class="a">Through the gate value <span class="math">p<sub>i</sub>(x)</span>, which multiplies the chosen expert's output: <span class="math">y = p<sub>i</sub>(x) &middot; E<sub>i</sub>(x)</span> where <span class="math">i</span> is the argmax. The argmax selection is non-differentiable, but once you've selected expert <span class="math">i</span>, the scalar <span class="math">p<sub>i</sub>(x)</span> is a differentiable function of the router weights via the softmax. So gradients flow: <span class="math">&part;&#x2112; / &part;W<sub>r</sub></span> includes a term from <span class="math">&part;p<sub>i</sub>(x) / &part;W<sub>r</sub></span>. You don't get gradients for the <em>unselected</em> experts' gate values directly, which is why the load-balancing loss matters — it's what pushes routing <em>toward</em> other experts when the current expert is overloaded. Without the aux loss, router collapse is the default failure mode.</div>
+</div>
+
+<div class="qa">
+<div class="q">Q: Switch-C has 1.6T parameters but underperforms Switch-XXL (395B) on downstream tasks. What does that tell you?</div>
+<div class="a">Parameters and FLOPs per token are not interchangeable. Switch-C has 10× fewer FLOPs per token than Switch-XXL. On tasks that need multi-step reasoning — running the computation deeper, essentially — FLOPs do real work that extra parameters can't substitute for. Parameters store knowledge; FLOPs per token do computation. For knowledge-heavy tasks (TriviaQA, closed-book QA), Switch-C's parameter count helps. For reasoning (SQuAD, SuperGLUE), it doesn't. This is essentially the sparse-model version of the depth-vs-width tradeoff in dense nets, and it's a good framing to remember: MoE scales the "knowledge" axis cheaply but doesn't help the "computation depth" axis at all.</div>
+</div>
+
+<div class="qa">
+<div class="q">Q: If you were going to improve this method, where would you focus?</div>
+<div class="a">A few places. First, the routing decision is token-level and position-independent — the router sees one token's representation and decides. You could imagine routing that's aware of context (what token came before) or learned routing that's conditioned on the task. Second, homogeneous experts are leaving flexibility on the table — heterogeneous experts (different sizes, different architectures) would let you route harder tokens to more capable experts. Third, expert specialization is uncharacterized — probing what each expert learns could unlock smarter initialization, task-specific expert selection, or targeted distillation. Fourth, the upstream-to-downstream gap in the largest models is the real open problem; better fine-tuning protocols for sparse models (maybe freezing most experts, maybe selective expert fine-tuning per task) is an active area.</div>
+</div>
+
+<div class="qa">
+<div class="q">Q: How does this connect to modern MoE architectures like Mixtral or DeepSeek-V3?</div>
+<div class="a">Mixtral went back to top-2 routing and found it works well at their scale — which suggests top-1 vs top-2 is more of a compute/quality tradeoff than a fundamental question. DeepSeek-V3 introduced shared experts (always-active) plus routed experts, which is a hedge against Switch's worry about reasoning underperformance — shared experts give you a guaranteed base of computation per token. DeepSeek also uses a much finer-grained setup with hundreds of small experts instead of dozens of large ones. The Switch paper's load-balancing loss is still the template though, sometimes with auxiliary-loss-free variants (DeepSeek's bias-based balancing). Switch's core insight — that you can decouple parameter count from FLOPs at inference time — is what makes all these architectures possible.</div>
+</div>
+
+<div class="qa">
+<div class="q">Q: Walk me through what would break if you removed the load-balancing loss entirely.</div>
+<div class="a">Router collapse. Early in training, the router's weights are random — some experts will, by chance, get slightly higher routing probability. Those experts get more training signal, so their outputs get better, so the router learns to send more tokens their way, so they get even better. Positive feedback loop. Within a few thousand steps, you'd likely see 1–2 experts handling ~90% of tokens, with most experts receiving essentially no training signal. The capacity constraint makes this even worse — overflow tokens get dropped, so the crowded experts see even more of the useful signal while the rest starve. The load-balancing loss is the only thing preventing this, and the coefficient <span class="math">&alpha;</span> has to be just right: too small and you get collapse, too large and it overwhelms the task loss and you get uniform-but-dumb routing.</div>
+</div>
+
+<div class="qa">
+<div class="q">Q: The paper uses selective fp32 in the router. Why is the router specifically the numerically sensitive part?</div>
+<div class="a">Two reasons. First, softmax is inherently sensitive to logit magnitudes — if one logit is much larger than the others, the exponentials blow up, and bfloat16's ~3-digit mantissa is not enough to represent the resulting ratios accurately. Small numerical errors get amplified through the exponential. Second, the router's decisions are <em>discrete</em> (argmax) — tiny perturbations in the softmax output can flip which expert gets selected, which is a much larger effective change than small perturbations inside a smooth FFN. Both arguments say: cast to fp32 for the router math, and specifically do it <em>before</em> the softmax so you don't lose precision in the operation that matters most. Casting back to bf16 <em>after</em> the router is fine because the downstream expert computation is robust to small precision errors in the gate value.</div>
+</div>
+
+</body>
+</html>
