@@ -6,76 +6,90 @@
   <title>Study Library</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased">
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased flex">
 
-  <div class="max-w-2xl mx-auto px-6 py-12">
+  <!-- Left Sidebar -->
+  <aside class="w-72 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col fixed top-0 left-0">
 
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white mb-1">Study Library</h1>
-      <p class="text-gray-500 text-sm">
-        <span id="count"></span> &middot; add with
-        <code class="text-indigo-400 bg-gray-900 px-1.5 py-0.5 rounded text-xs">./publish.sh file.html "Title" "Description"</code>
-      </p>
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b border-gray-800">
+      <h1 class="text-white font-semibold text-base tracking-tight">Study Library</h1>
+      <p id="count" class="text-gray-500 text-xs mt-0.5"></p>
     </div>
 
     <!-- Search -->
-    <div class="relative mb-6">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-      </svg>
-      <input
-        id="search"
-        type="text"
-        placeholder="Search files..."
-        class="w-full bg-gray-900 border border-gray-800 focus:border-indigo-500 focus:outline-none rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 transition"
-      />
+    <div class="px-4 py-3 border-b border-gray-800">
+      <div class="relative">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+        <input
+          id="search"
+          type="text"
+          placeholder="Search..."
+          class="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 focus:outline-none rounded-lg pl-8 pr-3 py-2 text-sm text-gray-100 placeholder-gray-600 transition"
+        />
+      </div>
     </div>
 
     <!-- File list -->
-    <div id="files" class="flex flex-col gap-2">
+    <nav id="files" class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
       <!-- ENTRIES_START -->
-      <a href="switch-transformers.html" data-title="Switch Transformers" data-desc="Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022" class="flex justify-between items-start bg-gray-900 border border-gray-800 hover:border-indigo-500 rounded-xl px-5 py-4 transition group"><div><p class="text-white group-hover:text-indigo-400 font-medium text-sm transition mb-0.5">Switch Transformers</p><p class="text-gray-500 text-xs">Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022</p></div><span class="text-gray-600 text-xs whitespace-nowrap ml-4 mt-0.5">Apr 17, 2026</span></a>
+      <a href="switch-transformers.html" data-title="Switch Transformers" data-desc="Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022" class="block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition group"><p class="text-gray-200 group-hover:text-white text-sm font-medium leading-snug">Switch Transformers</p><p class="text-gray-500 text-xs mt-0.5 truncate">Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022</p></a>
       <!-- ENTRIES_END -->
+    </nav>
+
+    <p id="empty-library" class="text-gray-600 text-xs px-5 py-4 hidden">No files yet.</p>
+    <p id="empty-search" class="text-gray-600 text-xs px-5 py-2 hidden">No matches.</p>
+
+    <!-- Footer -->
+    <div class="px-5 py-4 border-t border-gray-800">
+      <p class="text-gray-600 text-xs">Add: <code class="text-indigo-400">./publish.sh file.html "Title"</code></p>
     </div>
+  </aside>
 
-    <!-- Empty states -->
-    <p id="empty-library" class="text-gray-600 text-sm mt-4 hidden">
-      No files yet. Drop an HTML file here and run <code class="text-indigo-400">./publish.sh</code>.
-    </p>
-    <p id="empty-search" class="text-gray-600 text-sm mt-4 hidden">
-      No files match your search.
-    </p>
-
-  </div>
+  <!-- Main content -->
+  <main class="ml-72 flex-1 flex items-center justify-center min-h-screen px-12 py-16">
+    <div class="max-w-lg text-center">
+      <div class="w-12 h-12 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center mx-auto mb-5">
+        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+        </svg>
+      </div>
+      <h2 class="text-white text-xl font-semibold mb-2">Your Study Library</h2>
+      <p class="text-gray-500 text-sm leading-relaxed mb-6">
+        Pick a file from the sidebar to start reading.<br/>
+        Add new notes with <code class="text-indigo-400 bg-gray-900 px-1.5 py-0.5 rounded text-xs">./publish.sh</code> from the project folder.
+      </p>
+      <div class="text-left bg-gray-900 border border-gray-800 rounded-xl p-4 text-xs text-gray-500 font-mono space-y-1">
+        <p><span class="text-gray-600"># add a file</span></p>
+        <p><span class="text-indigo-400">./publish.sh</span> file.html <span class="text-green-400">"Title"</span> <span class="text-green-400">"Description"</span></p>
+      </div>
+    </div>
+  </main>
 
   <script>
-    const files   = document.getElementById('files');
-    const search  = document.getElementById('search');
-    const count   = document.getElementById('count');
+    const nav         = document.getElementById('files');
+    const search      = document.getElementById('search');
+    const count       = document.getElementById('count');
     const emptyLib    = document.getElementById('empty-library');
     const emptySearch = document.getElementById('empty-search');
 
-    const entries = Array.from(files.querySelectorAll('a[data-title]'));
+    const entries = Array.from(nav.querySelectorAll('a[data-title]'));
     const total   = entries.length;
 
-    count.textContent = total === 0 ? 'No files'
-                      : total === 1 ? '1 file'
-                      : `${total} files`;
-
+    count.textContent = total === 0 ? 'No files' : total === 1 ? '1 file' : `${total} files`;
     if (total === 0) emptyLib.classList.remove('hidden');
 
     search.addEventListener('input', () => {
       const q = search.value.trim().toLowerCase();
       let visible = 0;
-
       entries.forEach(el => {
         const text = (el.dataset.title + ' ' + (el.dataset.desc || '')).toLowerCase();
         const show = !q || text.includes(q);
         el.classList.toggle('hidden', !show);
         if (show) visible++;
       });
-
       emptySearch.classList.toggle('hidden', visible > 0 || total === 0);
     });
   </script>

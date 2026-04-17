@@ -18,11 +18,11 @@ if [[ ! -f "$FILE" ]]; then
   exit 1
 fi
 
-# Build card HTML (single line for sed compatibility)
+# Build sidebar entry HTML (single line for sed compatibility)
 if [[ -n "$DESC" ]]; then
-  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" data-desc=\"$DESC\" class=\"flex justify-between items-start bg-gray-900 border border-gray-800 hover:border-indigo-500 rounded-xl px-5 py-4 transition group\"><div><p class=\"text-white group-hover:text-indigo-400 font-medium text-sm transition mb-0.5\">$TITLE</p><p class=\"text-gray-500 text-xs\">$DESC</p></div><span class=\"text-gray-600 text-xs whitespace-nowrap ml-4 mt-0.5\">$DATE</span></a>"
+  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" data-desc=\"$DESC\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition group\"><p class=\"text-gray-200 group-hover:text-white text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5 truncate\">$DESC</p></a>"
 else
-  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" class=\"flex justify-between items-center bg-gray-900 border border-gray-800 hover:border-indigo-500 rounded-xl px-5 py-4 transition group\"><span class=\"text-white group-hover:text-indigo-400 font-medium text-sm transition\">$TITLE</span><span class=\"text-gray-600 text-xs\">$DATE</span></a>"
+  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition group\"><p class=\"text-gray-200 group-hover:text-white text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5\">$DATE</p></a>"
 fi
 
 # Insert before ENTRIES_END marker
