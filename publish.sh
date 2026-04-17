@@ -25,6 +25,12 @@ else
   ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition cursor-pointer\"><p class=\"text-gray-200 text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5\">$DATE</p></a>"
 fi
 
+# Guard against duplicate entries
+if grep -q "href=\"$FILE\"" index.html; then
+  echo "Error: '$FILE' is already in the index. Edit index.html manually to update it."
+  exit 1
+fi
+
 # Insert before ENTRIES_END marker
 sed -i "s|      <!-- ENTRIES_END -->|$ENTRY\n      <!-- ENTRIES_END -->|" index.html
 
