@@ -20,9 +20,9 @@ fi
 
 # Build sidebar entry HTML (single line for sed compatibility)
 if [[ -n "$DESC" ]]; then
-  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" data-desc=\"$DESC\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition group\"><p class=\"text-gray-200 group-hover:text-white text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5 truncate\">$DESC</p></a>"
+  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" data-desc=\"$DESC\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition cursor-pointer\"><p class=\"text-gray-200 text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5 truncate\">$DESC</p></a>"
 else
-  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition group\"><p class=\"text-gray-200 group-hover:text-white text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5\">$DATE</p></a>"
+  ENTRY="      <a href=\"$FILE\" data-title=\"$TITLE\" class=\"block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition cursor-pointer\"><p class=\"text-gray-200 text-sm font-medium leading-snug\">$TITLE</p><p class=\"text-gray-500 text-xs mt-0.5\">$DATE</p></a>"
 fi
 
 # Insert before ENTRIES_END marker

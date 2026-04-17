@@ -5,82 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Study Library</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    #sidebar { transition: width 0.25s ease, opacity 0.2s ease; }
+    #sidebar.collapsed { width: 0 !important; opacity: 0; overflow: hidden; }
+    #main { transition: margin-left 0.25s ease; }
+    #toggle-btn { transition: left 0.25s ease; }
+  </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased flex">
+<body class="bg-gray-950 text-gray-100 h-screen flex overflow-hidden font-sans antialiased">
 
-  <!-- Left Sidebar -->
-  <aside class="w-72 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col fixed top-0 left-0">
+  <!-- Toggle button — always visible -->
+  <button id="toggle-btn"
+    class="fixed top-3.5 left-3.5 z-50 w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition"
+    title="Toggle sidebar">
+    <svg id="icon-open" class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+    <svg id="icon-close" class="w-4 h-4 text-gray-300 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
 
-    <!-- Logo -->
-    <div class="px-5 py-5 border-b border-gray-800">
-      <h1 class="text-white font-semibold text-base tracking-tight">Study Library</h1>
-      <p id="count" class="text-gray-500 text-xs mt-0.5"></p>
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-72 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col flex-shrink-0">
+
+    <!-- Header -->
+    <div class="px-5 pt-3.5 pb-3 border-b border-gray-800 flex items-center gap-2 pl-14">
+      <div>
+        <h1 class="text-white font-semibold text-sm tracking-tight">Study Library</h1>
+        <p id="count" class="text-gray-500 text-xs"></p>
+      </div>
     </div>
 
     <!-- Search -->
-    <div class="px-4 py-3 border-b border-gray-800">
+    <div class="px-3 py-3 border-b border-gray-800">
       <div class="relative">
         <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
         </svg>
-        <input
-          id="search"
-          type="text"
-          placeholder="Search..."
-          class="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 focus:outline-none rounded-lg pl-8 pr-3 py-2 text-sm text-gray-100 placeholder-gray-600 transition"
-        />
+        <input id="search" type="text" placeholder="Search..."
+          class="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 focus:outline-none rounded-lg pl-8 pr-3 py-1.5 text-sm text-gray-100 placeholder-gray-600 transition" />
       </div>
     </div>
 
     <!-- File list -->
-    <nav id="files" class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
+    <nav id="files" class="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-0.5">
       <!-- ENTRIES_START -->
-      <a href="switch-transformers.html" data-title="Switch Transformers" data-desc="Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022" class="block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition group"><p class="text-gray-200 group-hover:text-white text-sm font-medium leading-snug">Switch Transformers</p><p class="text-gray-500 text-xs mt-0.5 truncate">Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022</p></a>
+      <a href="switch-transformers.html" data-title="Switch Transformers" data-desc="Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022" class="block rounded-lg px-3 py-2.5 hover:bg-gray-800 transition cursor-pointer"><p class="text-gray-200 text-sm font-medium leading-snug">Switch Transformers</p><p class="text-gray-500 text-xs mt-0.5 truncate">Fedus, Zoph, Shazeer — MoE, top-1 routing, 1.6T params, JMLR 2022</p></a>
       <!-- ENTRIES_END -->
     </nav>
 
-    <p id="empty-library" class="text-gray-600 text-xs px-5 py-4 hidden">No files yet.</p>
-    <p id="empty-search" class="text-gray-600 text-xs px-5 py-2 hidden">No matches.</p>
+    <p id="empty-library" class="text-gray-600 text-xs px-4 py-3 hidden">No files yet.</p>
+    <p id="empty-search"  class="text-gray-600 text-xs px-4 py-2 hidden">No matches.</p>
 
     <!-- Footer -->
-    <div class="px-5 py-4 border-t border-gray-800">
-      <p class="text-gray-600 text-xs">Add: <code class="text-indigo-400">./publish.sh file.html "Title"</code></p>
+    <div class="px-4 py-3 border-t border-gray-800">
+      <p class="text-gray-600 text-xs font-mono">./publish.sh file.html "Title"</p>
     </div>
   </aside>
 
-  <!-- Main content -->
-  <main class="ml-72 flex-1 flex items-center justify-center min-h-screen px-12 py-16">
-    <div class="max-w-lg text-center">
-      <div class="w-12 h-12 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center mx-auto mb-5">
+  <!-- Reader pane -->
+  <main id="main" class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Empty state -->
+    <div id="placeholder" class="flex-1 flex flex-col items-center justify-center text-center px-8">
+      <div class="w-12 h-12 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center mb-4">
         <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
         </svg>
       </div>
-      <h2 class="text-white text-xl font-semibold mb-2">Your Study Library</h2>
-      <p class="text-gray-500 text-sm leading-relaxed mb-6">
-        Pick a file from the sidebar to start reading.<br/>
-        Add new notes with <code class="text-indigo-400 bg-gray-900 px-1.5 py-0.5 rounded text-xs">./publish.sh</code> from the project folder.
-      </p>
-      <div class="text-left bg-gray-900 border border-gray-800 rounded-xl p-4 text-xs text-gray-500 font-mono space-y-1">
-        <p><span class="text-gray-600"># add a file</span></p>
-        <p><span class="text-indigo-400">./publish.sh</span> file.html <span class="text-green-400">"Title"</span> <span class="text-green-400">"Description"</span></p>
-      </div>
+      <p class="text-gray-400 font-medium text-sm mb-1">Select a file to read</p>
+      <p class="text-gray-600 text-xs">Choose from the sidebar on the left</p>
     </div>
+
+    <!-- iframe reader -->
+    <iframe id="reader" src="" class="flex-1 w-full border-0 hidden" allow="same-origin"></iframe>
+
   </main>
 
   <script>
+    const sidebar     = document.getElementById('sidebar');
+    const toggleBtn   = document.getElementById('toggle-btn');
+    const iconOpen    = document.getElementById('icon-open');
+    const iconClose   = document.getElementById('icon-close');
     const nav         = document.getElementById('files');
     const search      = document.getElementById('search');
     const count       = document.getElementById('count');
     const emptyLib    = document.getElementById('empty-library');
     const emptySearch = document.getElementById('empty-search');
+    const reader      = document.getElementById('reader');
+    const placeholder = document.getElementById('placeholder');
 
+    // --- Sidebar toggle ---
+    let open = true;
+    toggleBtn.addEventListener('click', () => {
+      open = !open;
+      sidebar.classList.toggle('collapsed', !open);
+      iconOpen.classList.toggle('hidden', !open);
+      iconClose.classList.toggle('hidden', open);
+    });
+
+    // --- File entries ---
     const entries = Array.from(nav.querySelectorAll('a[data-title]'));
     const total   = entries.length;
-
     count.textContent = total === 0 ? 'No files' : total === 1 ? '1 file' : `${total} files`;
     if (total === 0) emptyLib.classList.remove('hidden');
 
+    // Open file in iframe instead of navigating
+    entries.forEach(el => {
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        entries.forEach(a => a.classList.remove('bg-gray-800', 'text-white'));
+        el.classList.add('bg-gray-800');
+        placeholder.classList.add('hidden');
+        reader.classList.remove('hidden');
+        reader.src = el.getAttribute('href');
+      });
+    });
+
+    // --- Search ---
     search.addEventListener('input', () => {
       const q = search.value.trim().toLowerCase();
       let visible = 0;
