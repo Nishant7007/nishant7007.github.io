@@ -10,25 +10,73 @@
 
   <div class="max-w-2xl mx-auto px-6 py-12">
 
-    <div class="mb-10">
+    <!-- Header -->
+    <div class="mb-8">
       <h1 class="text-3xl font-bold text-white mb-1">Study Library</h1>
-      <p class="text-gray-500 text-sm">Personal reading list — add files with <code class="text-indigo-400">./publish.sh file.html "Title"</code></p>
+      <p class="text-gray-500 text-sm">
+        <span id="count"></span> &middot; add with
+        <code class="text-indigo-400 bg-gray-900 px-1.5 py-0.5 rounded text-xs">./publish.sh file.html "Title" "Description"</code>
+      </p>
     </div>
 
-    <!-- FILE LIST: entries are added below by publish.sh -->
-    <div id="files" class="flex flex-col gap-3">
+    <!-- Search -->
+    <div class="relative mb-6">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+      </svg>
+      <input
+        id="search"
+        type="text"
+        placeholder="Search files..."
+        class="w-full bg-gray-900 border border-gray-800 focus:border-indigo-500 focus:outline-none rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 transition"
+      />
+    </div>
+
+    <!-- File list -->
+    <div id="files" class="flex flex-col gap-2">
       <!-- ENTRIES_START -->
       <!-- ENTRIES_END -->
     </div>
 
-    <p id="empty" class="text-gray-600 text-sm mt-4">No files yet. Drop an HTML file here and run <code class="text-indigo-400">./publish.sh</code>.</p>
+    <!-- Empty states -->
+    <p id="empty-library" class="text-gray-600 text-sm mt-4 hidden">
+      No files yet. Drop an HTML file here and run <code class="text-indigo-400">./publish.sh</code>.
+    </p>
+    <p id="empty-search" class="text-gray-600 text-sm mt-4 hidden">
+      No files match your search.
+    </p>
 
   </div>
 
   <script>
-    // Hide the empty message if there are entries
-    const entries = document.querySelectorAll('#files a');
-    if (entries.length > 0) document.getElementById('empty').style.display = 'none';
+    const files   = document.getElementById('files');
+    const search  = document.getElementById('search');
+    const count   = document.getElementById('count');
+    const emptyLib    = document.getElementById('empty-library');
+    const emptySearch = document.getElementById('empty-search');
+
+    const entries = Array.from(files.querySelectorAll('a[data-title]'));
+    const total   = entries.length;
+
+    count.textContent = total === 0 ? 'No files'
+                      : total === 1 ? '1 file'
+                      : `${total} files`;
+
+    if (total === 0) emptyLib.classList.remove('hidden');
+
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      let visible = 0;
+
+      entries.forEach(el => {
+        const text = (el.dataset.title + ' ' + (el.dataset.desc || '')).toLowerCase();
+        const show = !q || text.includes(q);
+        el.classList.toggle('hidden', !show);
+        if (show) visible++;
+      });
+
+      emptySearch.classList.toggle('hidden', visible > 0 || total === 0);
+    });
   </script>
 
 </body>
