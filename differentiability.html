@@ -133,13 +133,54 @@
 
 <!-- ========== SECTION 1 ========== -->
 <div class="section">
-<h2>1. What is a derivative?</h2>
+<h2>1. Slope, tangent lines, and derivatives — the three views of the same thing</h2>
 
-<p>A derivative answers one question: <strong>if I change the input by a tiny amount, how much does the output change?</strong> That's it. The derivative is a rate of change.</p>
+<h3>What is slope?</h3>
 
-<p>Consider a car driving along a road. Its position changes over time. The <em>speed</em> of the car is the derivative of position with respect to time — it tells you how fast the position is changing. If the car is going 60 km/h, the derivative is 60. If the car is stopped, the derivative is 0.</p>
+<p>Slope is the simplest idea here. Take any straight line. Pick two points on it. Slope is: <strong>how much the line goes up or down &divide; how much it goes sideways</strong>.</p>
 
-<p>For a mathematical function <span class="m">f(x)</span>, the derivative at a specific point <span class="m">x₀</span> is defined as:</p>
+<p>If a line goes from point (1, 2) to point (4, 8), it went up by 6 (from 2 to 8) and sideways by 3 (from 1 to 4). Slope = 6/3 = 2. Meaning: for every 1 unit you move right, the line goes up by 2 units.</p>
+
+<p>A <strong>positive slope</strong> means the line goes uphill (left to right). A <strong>negative slope</strong> means downhill. A <strong>slope of zero</strong> means the line is perfectly flat — horizontal.</p>
+
+<p>For a straight line, the slope is the same everywhere. That's what makes it a straight line. Pick any two points and you'll get the same number.</p>
+
+<h3>The problem with curves</h3>
+
+<p>A curve is not a straight line. Its steepness changes from point to point. Think of a hill — at the bottom it's gentle, near the top it's steep, at the very top it's flat again. The slope is different at every location.</p>
+
+<p>So how do you define "slope" at a <em>single point</em> on a curve? You can't use the two-points formula because a single point doesn't give you a direction. This is where the tangent line comes in.</p>
+
+<h3>What is a tangent line?</h3>
+
+<p>Take a curve. Pick a point on it. Now imagine laying a straight ruler against the curve at that exact point, so the ruler just barely touches the curve and <strong>matches its direction</strong> at that spot. That ruler is the tangent line.</p>
+
+<p>More precisely: take your point P, and take another point Q somewhere else on the curve. Draw the straight line through P and Q — this is called a <strong>secant line</strong>. Now slide Q closer and closer to P along the curve. As Q approaches P, the secant line rotates and settles into a limiting position. That limiting line is the <strong>tangent</strong>.</p>
+
+<p>The tangent is the straight line that best approximates the curve at that one specific point. If you zoomed in really close on the curve at that point, the curve and the tangent would become indistinguishable — they'd look like the same line.</p>
+
+<h3>How slope, tangent, and derivative are connected</h3>
+
+<p>The relationship is: <strong>the derivative at a point = the slope of the tangent line at that point.</strong></p>
+
+<p>All three concepts collapse into the same number, just viewed differently:</p>
+
+<table class="tbl">
+  <tr><th>View</th><th>What it is</th><th>How you think about it</th></tr>
+  <tr><td>Geometric</td><td><strong>Tangent line</strong></td><td>A picture — the straight line that touches the curve and matches its direction</td></tr>
+  <tr><td>Algebraic</td><td><strong>Slope</strong> of that tangent</td><td>A number — rise over run of the tangent line</td></tr>
+  <tr><td>Calculus</td><td><strong>Derivative</strong></td><td>A formula — computes that same number using the limit definition</td></tr>
+</table>
+
+<p>So when someone says "the derivative of <span class="m">f(x) = x²</span> at <span class="m">x = 3</span> is 6," they're saying three equivalent things: (a) the tangent line at <span class="m">x = 3</span> has slope 6, (b) the curve is going up at a rate of 6 units of output per 1 unit of input at that point, and (c) if you nudge <span class="m">x</span> from 3 by a tiny amount <span class="m">&epsilon;</span>, the output changes by approximately <span class="m">6&epsilon;</span>.</p>
+
+<p>Why do we care about the tangent specifically? Because it converts a question about a curve (hard) into a question about a straight line (easy). "How steep is this curve here?" is hard to answer directly. But "what's the slope of this straight line?" is trivial — rise over run. The tangent is the bridge.</p>
+
+<p>And in deep learning, this is everything: the derivative tells you "if I increase this weight by a tiny amount, the loss goes up by [this much]." That's the only information gradient descent needs.</p>
+
+<h3>The formal definition of the derivative</h3>
+
+<p>Now that we have the intuition, here's the formal version. For a function <span class="m">f(x)</span>, the derivative at point <span class="m">x₀</span> is:</p>
 
 <div class="eq-block">
   <div class="eq-line">
@@ -192,9 +233,7 @@
 
 <p>In general, the derivative of <span class="m">x²</span> is <span class="m">2x</span>. At <span class="m">x = 3</span>, that's <span class="m">2(3) = 6</span>. At <span class="m">x = &minus;2</span>, it's <span class="m">2(&minus;2) = &minus;4</span>. The <strong>negative sign</strong> means: if you increase <span class="m">x</span>, the output <em>decreases</em>. The derivative encodes both <strong>magnitude</strong> (how much) and <strong>direction</strong> (which way).</p>
 
-<h3>Geometric meaning: the tangent line</h3>
 
-<p>Geometrically, the derivative at a point is the <strong>slope of the tangent line</strong> — the unique straight line that just touches the curve at that point without crossing it. If you zoom in infinitely close to a smooth curve at any point, it eventually looks like a straight line. That line's slope is the derivative.</p>
 </div>
 
 <!-- ========== SECTION 2 ========== -->
@@ -205,13 +244,31 @@
 
 <p>A function is <strong>differentiable</strong> (without qualification) if it's differentiable at every point in its domain.</p>
 
-<p>When is a function <em>not</em> differentiable? Three cases:</p>
+<p>When is a function <em>not</em> differentiable? The precise rule is: <strong>the derivative at a point exists only if the slope approaching that point from the left and the slope approaching from the right both exist and are equal.</strong> If they disagree, or if either doesn't exist, the derivative is undefined.</p>
 
-<p><strong>1. Sharp corners (kinks).</strong> At a sharp corner, the slope from the left differs from the slope from the right. There's no single tangent line. Example: <span class="m">f(x) = |x|</span> at <span class="m">x = 0</span>. Left slope = &minus;1. Right slope = +1. The limit doesn't converge because left and right disagree.</p>
+<p>This gives us three cases where differentiability fails:</p>
 
-<p><strong>2. Discontinuities (jumps).</strong> If the function jumps from one value to another, the derivative is undefined at the jump. Example: the step function (0 for <span class="m">x &lt; 0</span>, 1 for <span class="m">x &ge; 0</span>). At <span class="m">x = 0</span>, the output jumps by 1 over zero distance.</p>
+<h3>Case 1: Sharp corners (kinks)</h3>
 
-<p><strong>3. Vertical tangents / cusps.</strong> If the curve goes vertical, the slope is infinite. Example: <span class="m">f(x) = x<sup>1/3</sup></span> at <span class="m">x = 0</span>.</p>
+<p>At a sharp corner, the slope from the left and the slope from the right converge to <em>different</em> values. There's no single tangent line. The classic example is <span class="m">f(x) = |x|</span> at <span class="m">x = 0</span>.</p>
+
+<p>As you approach <span class="m">x = 0</span> from the right (<span class="m">x</span> = 0.1, 0.01, 0.001...), the slope is always +1. As you approach from the left (<span class="m">x</span> = &minus;0.1, &minus;0.01, &minus;0.001...), the slope is always &minus;1. Both limits exist individually, but they disagree: +1 &ne; &minus;1. So the derivative at <span class="m">x = 0</span> doesn't exist.</p>
+
+<div class="callout">
+  <p><strong>Common misconception:</strong> "The bottom of the V is a minimum, so the tangent should be horizontal (slope = 0) there." This is wrong. A horizontal tangent means "the function is momentarily flat — a tiny nudge barely changes the output." But at <span class="m">|x|</span> at <span class="m">x = 0</span>, the function is not flat at all. Nudge <span class="m">x</span> from 0 to 0.001 and <span class="m">|x|</span> jumps to 0.001 — full speed, slope = +1. Nudge to &minus;0.001 and <span class="m">|x|</span> also jumps to 0.001 — slope = &minus;1 from that side. The function is changing at full speed in both directions, just with contradictory slopes that no single line can capture. That's why the derivative is <strong>undefined</strong>, not zero.</p>
+</div>
+
+<p><strong>Compare with a smooth minimum:</strong> at <span class="m">f(x) = x²</span> at <span class="m">x = 0</span>, the curve gently flattens out. As you approach from the right (slopes: 0.2, 0.02, 0.002...), the slope approaches 0. From the left (slopes: &minus;0.2, &minus;0.02, &minus;0.002...), also approaches 0. Both sides agree on 0. The derivative exists and equals 0. The tangent is genuinely horizontal because the curve is genuinely flat at that instant.</p>
+
+<p>The key distinction: <strong>smooth minimum</strong> (like <span class="m">x²</span> at 0) &rarr; tangent exists, it's horizontal, derivative = 0. <strong>Sharp minimum</strong> (like <span class="m">|x|</span> at 0) &rarr; no tangent exists, derivative is undefined.</p>
+
+<h3>Case 2: Discontinuities (jumps)</h3>
+
+<p>If the function jumps from one value to another, the derivative is undefined at the jump. Example: the step function (0 for <span class="m">x &lt; 0</span>, 1 for <span class="m">x &ge; 0</span>). At <span class="m">x = 0</span>, the output jumps by 1 over zero distance. The slope from the left is 0 (flat line), the slope from the right is also 0 (flat line), but the function itself isn't even continuous — it skips a value — so the limit in the derivative definition doesn't exist at all.</p>
+
+<h3>Case 3: Vertical tangents / cusps</h3>
+
+<p>If the curve goes vertical at a point, the slope is infinite. Example: <span class="m">f(x) = x<sup>1/3</sup></span> at <span class="m">x = 0</span>. The left and right slopes both approach infinity, so the derivative doesn't exist as a finite number.</p>
 
 <p><strong>Try it:</strong> drag the slider to move a point along two curves. The smooth curve <span class="m">f(x) = x²</span> always has a clean tangent. The kinked curve <span class="m">f(x) = |x|</span> breaks at <span class="m">x = 0</span>.</p>
 
