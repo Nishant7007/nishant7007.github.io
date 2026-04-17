@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Differentiability — The Complete Guide for DL</title>
+<style>
+  :root {
+    --text: #1a1a1a;
+    --muted: #555;
+    --accent: #3266ad;
+    --bg: #fafaf7;
+    --card-bg: #f3f1eb;
+    --rule: #ddd6c8;
+    --ok-bg: #eef3ee;
+    --ok-text: #2a6e3f;
+    --bad-bg: #fcebeb;
+    --bad-text: #a32d2d;
+    --warn-bg: #fff8e8;
+    --warn-text: #85500b;
+    --math-bg: #f7f5f0;
+    --orange: #d85a30;
+    --teal: #1d9e75;
+    --red: #e24b4a;
+  }
+  body {
+    font-family: Charter, 'Iowan Old Style', Georgia, Cambria, 'Times New Roman', serif;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+    line-height: 1.75;
+    color: var(--text);
+    background: var(--bg);
+    font-size: 17px;
+  }
+  h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 2.5rem; font-style: italic; }
+  h2 {
+    font-size: 1.3rem; font-weight: 700; margin-top: 2.8rem; margin-bottom: 0.8rem;
+    padding-bottom: 0.3rem; border-bottom: 1px solid var(--rule); color: var(--accent);
+  }
+  h3 { font-size: 1.05rem; font-weight: 700; margin-top: 1.8rem; margin-bottom: 0.5rem; }
+  p { margin: 0 0 1rem; }
+  strong { font-weight: 700; }
+
+  /* Math styling */
+  .m { font-family: 'Cambria Math', 'STIX Two Math', 'Latin Modern Math', Cambria, Georgia, serif; font-style: italic; }
+  .m-up { font-style: normal; }
+  .eq-block {
+    background: var(--math-bg);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin: 1.2rem 0;
+    overflow-x: auto;
+    font-family: 'Cambria Math', 'STIX Two Math', Cambria, Georgia, serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    line-height: 2.2;
+  }
+  .eq-block .eq-line {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0.2rem 0;
+  }
+  .eq-block .eq-line.indent { padding-left: 2rem; }
+  .eq-block .eq-comment {
+    font-family: Charter, Georgia, serif;
+    font-style: normal;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-left: 1rem;
+  }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 3px; }
+  .frac .num { border-bottom: 1.5px solid var(--text); padding: 0 4px 2px; font-size: 0.92em; }
+  .frac .den { padding: 2px 4px 0; font-size: 0.92em; }
+  .big-paren { font-size: 1.6em; font-weight: 300; vertical-align: middle; line-height: 1; }
+
+  .canvas-wrap { position: relative; width: 100%; height: 300px; margin: 1rem 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0; font-family: -apple-system, sans-serif; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 1rem 0; font-family: -apple-system, sans-serif; }
+  .controls label { font-size: 0.85rem; color: var(--muted); }
+  .controls input[type=range] { flex: 1; min-width: 100px; }
+  .controls select { padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; font-size: 0.85rem; background: white; }
+  .controls button { padding: 6px 18px; border: 1px solid var(--rule); border-radius: 6px; background: white; font-size: 0.85rem; cursor: pointer; }
+  .controls button:hover { background: var(--card-bg); }
+  .readout { font-size: 0.85rem; font-weight: 600; min-width: 30px; font-family: -apple-system, sans-serif; }
+  .card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 1rem 0; font-family: -apple-system, sans-serif; }
+  .metric-card { background: var(--card-bg); border-radius: 8px; padding: 0.8rem 1rem; }
+  .metric-card .mc-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 3px; }
+  .metric-card .mc-value { font-size: 1.3rem; font-weight: 600; }
+  .metric-card .mc-sub { font-size: 0.75rem; margin-top: 3px; }
+  .ok { background: var(--ok-bg); color: var(--ok-text); padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+  .bad { background: var(--bad-bg); color: var(--bad-text); padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+  .step-box { background: var(--card-bg); border-radius: 8px; padding: 0.9rem 1.1rem; margin: 0.7rem 0; }
+  .step-box .sb-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+  .step-box .sb-desc { font-size: 0.92rem; color: var(--muted); line-height: 1.65; }
+  .callout { border-left: 3px solid #d4a341; background: var(--warn-bg); padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; }
+  .callout p { margin: 0; font-size: 0.92rem; color: var(--warn-text); }
+  .chain-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 1rem 0; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82rem; }
+  .chain-box { background: var(--card-bg); border-radius: 6px; padding: 5px 10px; }
+  .chain-box.dead { background: var(--bad-bg); color: var(--bad-text); }
+  .chain-arrow { color: var(--muted); font-size: 1rem; }
+  .section { padding: 0.5rem 0 1.5rem; border-bottom: 1px solid var(--rule); }
+  .section:last-child { border-bottom: none; }
+  sub, sup { font-size: 0.75em; }
+  .tbl { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; font-family: -apple-system, sans-serif; }
+  .tbl th, .tbl td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--rule); }
+  .tbl th { font-weight: 600; font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .flow-chain {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0; margin: 1.2rem 0;
+    font-family: -apple-system, sans-serif; font-size: 0.9rem;
+  }
+  .flow-box {
+    background: var(--card-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 8px 16px; font-weight: 600; text-align: center;
+  }
+  .flow-box.highlight { background: #dce8f5; border-color: var(--accent); color: var(--accent); }
+  .flow-arrow { font-size: 1.4rem; color: var(--muted); padding: 0 6px; }
+  .flow-label { font-size: 0.75rem; color: var(--muted); display: block; font-weight: 400; margin-top: 2px; }
+  @media print {
+    body { background: white; font-size: 11pt; }
+    .controls, button { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Differentiability & Why Deep Learning Needs It</h1>
+<div class="subtitle">The complete explanation — from first principles to backpropagation — so you never have to think about this again</div>
+
+<!-- ========== SECTION 1 ========== -->
+<div class="section">
+<h2>1. What is a derivative?</h2>
+
+<p>A derivative answers one question: <strong>if I change the input by a tiny amount, how much does the output change?</strong> That's it. The derivative is a rate of change.</p>
+
+<p>Consider a car driving along a road. Its position changes over time. The <em>speed</em> of the car is the derivative of position with respect to time — it tells you how fast the position is changing. If the car is going 60 km/h, the derivative is 60. If the car is stopped, the derivative is 0.</p>
+
+<p>For a mathematical function <span class="m">f(x)</span>, the derivative at a specific point <span class="m">x₀</span> is defined as:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m">f &prime;(x₀)</span> &nbsp;=&nbsp;
+    <span>lim</span><sub><span class="m">h</span>&rarr;0</sub>&nbsp;
+    <span class="frac"><span class="num"><span class="m">f</span>(<span class="m">x₀</span> + <span class="m">h</span>) &minus; <span class="m">f</span>(<span class="m">x₀</span>)</span><span class="den"><span class="m">h</span></span></span>
+  </div>
+</div>
+
+<p>Read this carefully:</p>
+
+<ul>
+  <li>The numerator <span class="m">f(x₀ + h) &minus; f(x₀)</span> is <strong>"how much did the output change"</strong> when we nudged the input by <span class="m">h</span>.</li>
+  <li>The denominator <span class="m">h</span> is <strong>"how much did the input change."</strong></li>
+  <li>Their ratio is <strong>"output change per unit of input change"</strong> — the slope.</li>
+  <li>The limit <span class="m">h &rarr; 0</span> makes this the <em>instantaneous</em> rate of change, not an average.</li>
+</ul>
+
+<h3>Worked example: derivative of f(x) = x² at x = 3</h3>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m">f &prime;(3)</span> &nbsp;=&nbsp;
+    lim<sub><span class="m">h</span>&rarr;0</sub>&nbsp;
+    <span class="frac"><span class="num">(3 + <span class="m">h</span>)² &minus; 3²</span><span class="den"><span class="m">h</span></span></span>
+    <span class="eq-comment">plug in x₀ = 3</span>
+  </div>
+  <div class="eq-line indent">
+    =&nbsp; lim<sub><span class="m">h</span>&rarr;0</sub>&nbsp;
+    <span class="frac"><span class="num">9 + 6<span class="m">h</span> + <span class="m">h</span>² &minus; 9</span><span class="den"><span class="m">h</span></span></span>
+    <span class="eq-comment">expand (3+h)² = 9 + 6h + h²</span>
+  </div>
+  <div class="eq-line indent">
+    =&nbsp; lim<sub><span class="m">h</span>&rarr;0</sub>&nbsp;
+    <span class="frac"><span class="num">6<span class="m">h</span> + <span class="m">h</span>²</span><span class="den"><span class="m">h</span></span></span>
+    <span class="eq-comment">the 9's cancel</span>
+  </div>
+  <div class="eq-line indent">
+    =&nbsp; lim<sub><span class="m">h</span>&rarr;0</sub>&nbsp;
+    (6 + <span class="m">h</span>)
+    <span class="eq-comment">divide each term by h</span>
+  </div>
+  <div class="eq-line indent">
+    =&nbsp; <strong>6</strong>
+    <span class="eq-comment">as h → 0, we're left with 6</span>
+  </div>
+</div>
+
+<p>So at <span class="m">x = 3</span>, the slope is 6. Let's verify: if you nudge <span class="m">x</span> from 3 to 3.001, the output changes by approximately 6 &times; 0.001 = 0.006. Check: 3.001² = 9.006001. The actual change is 0.006001 — almost exactly what the derivative predicted.</p>
+
+<p>In general, the derivative of <span class="m">x²</span> is <span class="m">2x</span>. At <span class="m">x = 3</span>, that's <span class="m">2(3) = 6</span>. At <span class="m">x = &minus;2</span>, it's <span class="m">2(&minus;2) = &minus;4</span>. The <strong>negative sign</strong> means: if you increase <span class="m">x</span>, the output <em>decreases</em>. The derivative encodes both <strong>magnitude</strong> (how much) and <strong>direction</strong> (which way).</p>
+
+<h3>Geometric meaning: the tangent line</h3>
+
+<p>Geometrically, the derivative at a point is the <strong>slope of the tangent line</strong> — the unique straight line that just touches the curve at that point without crossing it. If you zoom in infinitely close to a smooth curve at any point, it eventually looks like a straight line. That line's slope is the derivative.</p>
+</div>
+
+<!-- ========== SECTION 2 ========== -->
+<div class="section">
+<h2>2. What does "differentiable" mean?</h2>
+
+<p>A function is <strong>differentiable at a point</strong> if the derivative exists there — the limit above actually converges to a single, finite number.</p>
+
+<p>A function is <strong>differentiable</strong> (without qualification) if it's differentiable at every point in its domain.</p>
+
+<p>When is a function <em>not</em> differentiable? Three cases:</p>
+
+<p><strong>1. Sharp corners (kinks).</strong> At a sharp corner, the slope from the left differs from the slope from the right. There's no single tangent line. Example: <span class="m">f(x) = |x|</span> at <span class="m">x = 0</span>. Left slope = &minus;1. Right slope = +1. The limit doesn't converge because left and right disagree.</p>
+
+<p><strong>2. Discontinuities (jumps).</strong> If the function jumps from one value to another, the derivative is undefined at the jump. Example: the step function (0 for <span class="m">x &lt; 0</span>, 1 for <span class="m">x &ge; 0</span>). At <span class="m">x = 0</span>, the output jumps by 1 over zero distance.</p>
+
+<p><strong>3. Vertical tangents / cusps.</strong> If the curve goes vertical, the slope is infinite. Example: <span class="m">f(x) = x<sup>1/3</sup></span> at <span class="m">x = 0</span>.</p>
+
+<p><strong>Try it:</strong> drag the slider to move a point along two curves. The smooth curve <span class="m">f(x) = x²</span> always has a clean tangent. The kinked curve <span class="m">f(x) = |x|</span> breaks at <span class="m">x = 0</span>.</p>
+
+<div class="controls">
+  <label>Move point along x</label>
+  <input type="range" id="xSlider" min="-3" max="3" step="0.1" value="1.5">
+  <span class="readout" id="xVal">1.5</span>
+</div>
+
+<div class="card-row">
+  <div class="metric-card">
+    <div class="mc-label">x² derivative (= 2x)</div>
+    <div class="mc-value" id="smoothSlope">3.0</div>
+    <div class="mc-sub" id="smoothStatus"><span class="ok">differentiable</span></div>
+  </div>
+  <div class="metric-card">
+    <div class="mc-label">|x| derivative</div>
+    <div class="mc-value" id="kinkSlope">1.0</div>
+    <div class="mc-sub" id="kinkStatus"><span class="ok">differentiable</span></div>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#3266ad;"></span>f(x) = x² (smooth, always differentiable)</span>
+  <span><span class="dot" style="background:#d85a30;"></span>f(x) = |x| (sharp corner at x=0)</span>
+</div>
+<div class="canvas-wrap"><canvas id="chart1"></canvas></div>
+
+<div class="callout">
+  <p><strong>Key intuition:</strong> differentiable means "locally linear." If you zoom in close enough on a differentiable point, the curve looks like a straight line. At a non-differentiable point, no matter how much you zoom in, you still see the kink. The function doesn't have a single "direction" there.</p>
+</div>
+</div>
+
+<!-- ========== SECTION 3 ========== -->
+<div class="section">
+<h2>3. Why deep learning cares: gradient descent</h2>
+
+<p>Training a neural network is an <strong>optimization problem</strong>. You have a loss function (a measure of how wrong the model is), and you want to find the weight values that make it as small as possible. A typical network has millions of weights. You can't try all combinations. You need a <em>directed</em> strategy.</p>
+
+<p>That strategy is <strong>gradient descent</strong>:</p>
+
+<p>1. Compute the derivative of the loss with respect to each weight. This tells you: "if I increase this weight slightly, will the loss go up or down, and by how much?"</p>
+
+<p>2. Nudge each weight in the direction that makes the loss <em>smaller</em>.</p>
+
+<p>3. Repeat millions of times.</p>
+
+<p>The update rule:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m">w</span><sub>new</sub> &nbsp;=&nbsp;
+    <span class="m">w</span><sub>old</sub> &nbsp;&minus;&nbsp;
+    <span class="m">&eta;</span> &nbsp;&middot;&nbsp;
+    <span class="frac"><span class="num">&part; &#x2112;</span><span class="den">&part; <span class="m">w</span></span></span>
+  </div>
+</div>
+
+<p>Where each symbol means:</p>
+
+<table class="tbl">
+  <tr><th>Symbol</th><th>Name</th><th>What it is</th></tr>
+  <tr><td><span class="m">w</span></td><td>Weight</td><td>A single learnable parameter in the network</td></tr>
+  <tr><td><span class="m">&eta;</span> (eta)</td><td>Learning rate</td><td>A scalar controlling step size. Too big → overshoot. Too small → crawl.</td></tr>
+  <tr><td><span class="frac"><span class="num">&part;&#x2112;</span><span class="den">&part;<span class="m">w</span></span></span></td><td>Gradient</td><td>Partial derivative of the loss w.r.t. this weight. "How much does the loss change if I nudge this weight?"</td></tr>
+  <tr><td>&minus; sign</td><td>Direction</td><td>The derivative points uphill (steepest ascent). We want to go downhill, so we subtract.</td></tr>
+</table>
+
+<h3>The blindfolded hiker analogy</h3>
+
+<p>Imagine you're blindfolded on a hilly landscape. You can't see, but you <strong>can feel the slope under your feet</strong>. If the ground tilts left, you step left. If it tilts right, you step right. The steeper the tilt, the bigger your step. Eventually the ground feels flat — you've found a valley.</p>
+
+<p>The derivative <em>is</em> the "slope under your feet." Without it, you're standing still with zero information about which direction leads downhill. <strong>No derivative = no direction = no learning.</strong></p>
+
+<h3>Try it: gradient descent on f(x) = x²</h3>
+
+<p>Experiments: (a) learning rate 0.1 — smooth convergence. (b) 0.4+ — overshoots and bounces. (c) 0.02 — painfully slow. (d) start at x = 0 — gradient is zero, ball can't move (already at minimum).</p>
+
+<div class="controls">
+  <label>Start x</label>
+  <input type="range" id="gdStart" min="-3" max="3" step="0.1" value="2.5">
+  <span class="readout" id="gdStartVal">2.5</span>
+  <label>Learning rate &eta;</label>
+  <input type="range" id="gdLR" min="0.01" max="0.5" step="0.01" value="0.1">
+  <span class="readout" id="gdLRVal">0.10</span>
+  <button id="gdRun">Run</button>
+  <button id="gdReset">Reset</button>
+</div>
+
+<div class="card-row">
+  <div class="metric-card"><div class="mc-label">Current x</div><div class="mc-value" id="gdX">2.50</div></div>
+  <div class="metric-card"><div class="mc-label">Loss f(x) = x²</div><div class="mc-value" id="gdLoss">6.25</div></div>
+  <div class="metric-card"><div class="mc-label">Gradient f&prime;(x) = 2x</div><div class="mc-value" id="gdGrad">5.00</div></div>
+  <div class="metric-card"><div class="mc-label">Step #</div><div class="mc-value" id="gdStep">0</div></div>
+</div>
+
+<div class="canvas-wrap"><canvas id="chart2"></canvas></div>
+
+<div class="callout">
+  <p><strong>What if the gradient is always zero?</strong> Then the update becomes <span class="m">w</span><sub>new</sub> = <span class="m">w</span><sub>old</sub> &minus; &eta; &times; 0 = <span class="m">w</span><sub>old</sub>. The weight never changes. It's frozen forever. This is exactly what happens when a non-differentiable or flat function sits in the network.</p>
+</div>
+</div>
+
+<!-- ========== SECTION 4 ========== -->
+<div class="section">
+<h2>4. From one weight to millions: backpropagation and the chain rule</h2>
+
+<p>The previous section showed gradient descent for one weight. A real network has millions of weights across many layers. How do you compute the derivative of the loss with respect to a weight buried deep in layer 1, when the loss is computed many layers later?</p>
+
+<p>The answer is <strong>backpropagation</strong>, which is just the <strong>chain rule</strong> from calculus applied systematically.</p>
+
+<h3>What is the chain rule?</h3>
+
+<p>The chain rule says: if you compose two functions — <span class="m">f(g(x))</span> — the derivative of the whole thing is the <strong>product of the individual derivatives</strong>:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="frac"><span class="num"><span class="m-up">d</span></span><span class="den"><span class="m-up">d</span><span class="m">x</span></span></span>
+    <span class="m">f</span><big>(</big><span class="m">g</span>(<span class="m">x</span>)<big>)</big>
+    &nbsp;=&nbsp;
+    <span class="m">f &prime;</span><big>(</big><span class="m">g</span>(<span class="m">x</span>)<big>)</big>
+    &nbsp;&middot;&nbsp;
+    <span class="m">g&prime;</span>(<span class="m">x</span>)
+  </div>
+</div>
+
+<p>In words: <strong>"the rate of change of the whole chain = rate of change of the outer function &times; rate of change of the inner function."</strong></p>
+
+<h3>Worked example of the chain rule</h3>
+
+<p>Let <span class="m">f(u) = u²</span> and <span class="m">g(x) = 3x + 1</span>. Then the composition is <span class="m">f(g(x)) = (3x + 1)²</span>.</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="frac"><span class="num"><span class="m-up">d</span></span><span class="den"><span class="m-up">d</span><span class="m">x</span></span></span>
+    (3<span class="m">x</span> + 1)²
+    &nbsp;=&nbsp;
+    <span class="m">f &prime;</span><big>(</big><span class="m">g</span>(<span class="m">x</span>)<big>)</big>
+    &nbsp;&middot;&nbsp;
+    <span class="m">g&prime;</span>(<span class="m">x</span>)
+    <span class="eq-comment">apply chain rule</span>
+  </div>
+  <div class="eq-line indent">
+    =&nbsp; 2 &middot; (3<span class="m">x</span> + 1) &nbsp;&middot;&nbsp; 3
+    <span class="eq-comment">f&prime;(u) = 2u, evaluated at u = g(x); &nbsp; g&prime;(x) = 3</span>
+  </div>
+  <div class="eq-line indent">
+    =&nbsp; <strong>6(3<span class="m">x</span> + 1)</strong>
+    <span class="eq-comment">simplify</span>
+  </div>
+</div>
+
+<p><strong>Verification by expanding first:</strong></p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    (3<span class="m">x</span> + 1)² &nbsp;=&nbsp; 9<span class="m">x</span>² + 6<span class="m">x</span> + 1
+    <span class="eq-comment">expand the square</span>
+  </div>
+  <div class="eq-line">
+    <span class="frac"><span class="num"><span class="m-up">d</span></span><span class="den"><span class="m-up">d</span><span class="m">x</span></span></span>
+    (9<span class="m">x</span>² + 6<span class="m">x</span> + 1) &nbsp;=&nbsp; 18<span class="m">x</span> + 6 &nbsp;=&nbsp; <strong>6(3<span class="m">x</span> + 1)</strong>
+    <span class="eq-comment">same answer ✓</span>
+  </div>
+</div>
+
+<p>The chain rule gave us the correct derivative without having to expand first. This matters because in a neural network, you <em>can't</em> expand — the compositions are too deep and too complex. The chain rule is the only practical way.</p>
+
+<h3>The chain rule extends to any depth</h3>
+
+<p>For three nested functions <span class="m">f(g(h(x)))</span>:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="frac"><span class="num"><span class="m-up">d</span></span><span class="den"><span class="m-up">d</span><span class="m">x</span></span></span>
+    <span class="m">f</span><big>(</big><span class="m">g</span>(<span class="m">h</span>(<span class="m">x</span>))<big>)</big>
+    &nbsp;=&nbsp;
+    <span class="m">f &prime;</span><big>(</big><span class="m">g</span>(<span class="m">h</span>(<span class="m">x</span>))<big>)</big>
+    &nbsp;&middot;&nbsp;
+    <span class="m">g&prime;</span><big>(</big><span class="m">h</span>(<span class="m">x</span>)<big>)</big>
+    &nbsp;&middot;&nbsp;
+    <span class="m">h&prime;</span>(<span class="m">x</span>)
+  </div>
+</div>
+
+<p>You just keep multiplying. Each function contributes its own local derivative, evaluated at the appropriate input. For <span class="m">n</span> nested functions, it's a product of <span class="m">n</span> terms.</p>
+
+<h3>A neural network IS a chain of functions</h3>
+
+<p>A neural network with 3 layers computes a chain of transformations:</p>
+
+<div class="flow-chain">
+  <div class="flow-box">Input <span class="m">x</span></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box highlight">Layer 1<span class="flow-label"><span class="m">f₁</span>(weights <span class="m">w₁</span>)</span></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box highlight">Layer 2<span class="flow-label"><span class="m">f₂</span>(weights <span class="m">w₂</span>)</span></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box highlight">Layer 3<span class="flow-label"><span class="m">f₃</span>(weights <span class="m">w₃</span>)</span></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box">Loss &#x2112;</div>
+</div>
+
+<p>Each layer applies a function: a linear transformation (matrix multiply with weights) followed by a nonlinear activation. The loss &#x2112; is computed by comparing the final output to the target.</p>
+
+<p>To update the weights <span class="m">w₁</span> in Layer 1, we need <span class="frac"><span class="num">&part;&#x2112;</span><span class="den">&part;<span class="m">w₁</span></span></span>. By the chain rule:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="frac"><span class="num">&part; &#x2112;</span><span class="den">&part; <span class="m">w</span>₁</span></span>
+    &nbsp;=&nbsp;
+    <span class="frac"><span class="num">&part; &#x2112;</span><span class="den">&part; <span class="m">L</span>₃</span></span>
+    &nbsp;&middot;&nbsp;
+    <span class="frac"><span class="num">&part; <span class="m">L</span>₃</span><span class="den">&part; <span class="m">L</span>₂</span></span>
+    &nbsp;&middot;&nbsp;
+    <span class="frac"><span class="num">&part; <span class="m">L</span>₂</span><span class="den">&part; <span class="m">L</span>₁</span></span>
+    &nbsp;&middot;&nbsp;
+    <span class="frac"><span class="num">&part; <span class="m">L</span>₁</span><span class="den">&part; <span class="m">w</span>₁</span></span>
+  </div>
+</div>
+
+<p>Each fraction is a <strong>local derivative</strong>: "how much does this layer's output change when its input changes?" Backpropagation computes these layer-by-layer, from output back to input, and multiplies them together.</p>
+
+<h3>Why one broken link kills the entire chain</h3>
+
+<p>The chain rule is a <strong>product</strong>. Anything multiplied by zero is zero. So:</p>
+
+<table class="tbl">
+  <tr><th>Scenario</th><th>Term values</th><th>Product</th><th>Effect</th></tr>
+  <tr><td>All healthy</td><td>0.8 &times; 0.8 &times; 0.8 &times; 0.8</td><td>0.4096</td><td>Gradient flows. Learning works.</td></tr>
+  <tr><td>One zero</td><td>0.8 &times; 0.8 &times; <strong>0</strong> &times; 0.8</td><td>0</td><td>Gradient dead. <span class="m">w₁</span> can never learn.</td></tr>
+  <tr><td>All small</td><td>0.1 &times; 0.1 &times; 0.1 &times; 0.1</td><td>0.0001</td><td>Vanishing gradient. Barely any learning.</td></tr>
+  <tr><td>All large</td><td>3.0 &times; 3.0 &times; 3.0 &times; 3.0</td><td>81</td><td>Exploding gradient. Training blows up.</td></tr>
+</table>
+
+<p><strong>The zero case</strong> is directly caused by non-differentiability. If any layer has a function whose derivative is zero (like a step function), it contributes a zero to the product, and the <em>entire</em> gradient dies. All weights in earlier layers are frozen.</p>
+
+<p><strong>The vanishing case</strong> happens with functions like sigmoid, whose derivative maxes out at 0.25. In a 50-layer network: 0.25⁵⁰ &asymp; 10⁻³⁰. Technically nonzero, but useless.</p>
+
+<p><strong>The exploding case</strong> is the opposite: derivatives &gt; 1 compound exponentially. In a 50-layer network: 1.5⁵⁰ &asymp; 6.4 &times; 10⁸. Wild weight updates, unstable training.</p>
+
+<p><strong>Try it:</strong> switch between scenarios below.</p>
+
+<div class="controls">
+  <label>Scenario</label>
+  <select id="chainSelect">
+    <option value="healthy">All layers healthy (0.8 each)</option>
+    <option value="zero">Layer 2 has zero gradient (dead link)</option>
+    <option value="vanish">All layers have small gradients (0.1 each)</option>
+    <option value="explode">All layers have large gradients (3.0 each)</option>
+  </select>
+</div>
+
+<div id="chainViz"></div>
+
+<div class="card-row">
+  <div class="metric-card">
+    <div class="mc-label">Final gradient reaching w₁</div>
+    <div class="mc-value" id="chainResult">0.4096</div>
+    <div class="mc-sub" id="chainVerdict"><span class="ok">learning happens</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ========== SECTION 5 ========== -->
+<div class="section">
+<h2>5. Activation functions: the make-or-break layer</h2>
+
+<p>Every layer in a neural network applies: (1) a linear transformation (matrix multiply), then (2) a nonlinear <strong>activation function</strong>. Without the activation, stacking layers is pointless — a composition of linear functions is still linear, and the network can only learn linear relationships.</p>
+
+<p>The activation function's derivative determines whether gradients flow or die. This makes it one of the most consequential design decisions in deep learning.</p>
+
+<div class="controls">
+  <label>Activation function</label>
+  <select id="actSelect">
+    <option value="sigmoid">Sigmoid</option>
+    <option value="relu">ReLU</option>
+    <option value="step">Step function</option>
+    <option value="leaky">Leaky ReLU</option>
+  </select>
+</div>
+
+<div class="card-row">
+  <div class="metric-card"><div class="mc-label">Differentiable?</div><div class="mc-value" id="actDiff" style="font-size:1rem;">Yes, everywhere</div></div>
+  <div class="metric-card"><div class="mc-label">Gradient problem</div><div class="mc-value" id="actIssue" style="font-size:1rem;">Vanishes at extremes</div></div>
+  <div class="metric-card"><div class="mc-label">Used in practice?</div><div class="mc-value" id="actUsed" style="font-size:1rem;">Rarely now</div></div>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#3266ad;"></span>Function value</span>
+  <span><span class="dot" style="background:#1d9e75;"></span>Derivative (gradient)</span>
+</div>
+<div class="canvas-wrap"><canvas id="chart3"></canvas></div>
+
+<h3>Sigmoid</h3>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m">&sigma;</span>(<span class="m">x</span>) &nbsp;=&nbsp;
+    <span class="frac"><span class="num">1</span><span class="den">1 + <span class="m">e</span><sup>&minus;<span class="m">x</span></sup></span></span>
+    <span class="eq-comment">squishes any input to (0, 1)</span>
+  </div>
+  <div class="eq-line" style="margin-top:0.3rem;">
+    <span class="m">&sigma;&prime;</span>(<span class="m">x</span>) &nbsp;=&nbsp;
+    <span class="m">&sigma;</span>(<span class="m">x</span>) &middot; (1 &minus; <span class="m">&sigma;</span>(<span class="m">x</span>))
+    <span class="eq-comment">max value is 0.25, at x = 0</span>
+  </div>
+</div>
+
+<p>Smooth and differentiable everywhere. But the derivative maxes out at 0.25 and drops to near-zero for large |x|. In a 10-layer network: 0.25¹⁰ &asymp; 10⁻⁶. In a 50-layer network: effectively zero. This is the <strong>vanishing gradient problem</strong>. Deep sigmoid networks are nearly impossible to train. Used today only in output layers (binary classification) and gating mechanisms (LSTMs).</p>
+
+<h3>Step function</h3>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m-up">step</span>(<span class="m">x</span>) &nbsp;=&nbsp;
+    1 &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &ge; 0, &nbsp;&nbsp; 0 &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &lt; 0
+  </div>
+  <div class="eq-line" style="margin-top:0.3rem;">
+    <span class="m-up">step&prime;</span>(<span class="m">x</span>) &nbsp;=&nbsp; 0 &nbsp;&nbsp; <span class="m-up">everywhere</span>
+    <span class="eq-comment">derivative is flat zero</span>
+  </div>
+</div>
+
+<p>The worst case. Not differentiable at <span class="m">x = 0</span> (discontinuity), and derivative is exactly zero everywhere else. The gradient is always zero. <strong>No weight can ever learn through a step function.</strong> This is why the original Perceptron (hard threshold) couldn't be trained with backpropagation. The invention of backpropagation required switching to smooth activations.</p>
+
+<h3>ReLU (Rectified Linear Unit)</h3>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m-up">ReLU</span>(<span class="m">x</span>) &nbsp;=&nbsp; max(0, <span class="m">x</span>)
+  </div>
+  <div class="eq-line" style="margin-top:0.3rem;">
+    <span class="m-up">ReLU&prime;</span>(<span class="m">x</span>) &nbsp;=&nbsp;
+    1 &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &gt; 0, &nbsp;&nbsp; 0 &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &le; 0
+    <span class="eq-comment">constant 1 for positive inputs!</span>
+  </div>
+</div>
+
+<p>The breakthrough that enabled deep learning (AlexNet, 2012). For positive inputs, the derivative is a constant 1 — gradients pass through with <em>zero</em> attenuation. In a 100-layer network with all-positive activations: 1¹⁰⁰ = 1. The gradient is perfectly preserved. No vanishing.</p>
+
+<p>The catch: for negative inputs, the derivative is zero. A neuron with negative input is "dead" — it contributes zero gradient. If a neuron always receives negative inputs (bad initialization, large negative biases), it dies permanently. This is the <strong>dying ReLU problem</strong>. In practice it's tolerable because enough neurons stay positive.</p>
+
+<p>ReLU is technically not differentiable at <span class="m">x = 0</span> (it has a kink), but in practice we define the derivative as 0 there. The probability of landing exactly at 0 is negligible.</p>
+
+<h3>Leaky ReLU</h3>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="m-up">LeakyReLU</span>(<span class="m">x</span>) &nbsp;=&nbsp;
+    <span class="m">x</span> &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &ge; 0, &nbsp;&nbsp;
+    <span class="m">&alpha;x</span> &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &lt; 0
+    <span class="eq-comment">typically &alpha; = 0.01</span>
+  </div>
+  <div class="eq-line" style="margin-top:0.3rem;">
+    <span class="m-up">LeakyReLU&prime;</span>(<span class="m">x</span>) &nbsp;=&nbsp;
+    1 &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &ge; 0, &nbsp;&nbsp;
+    <span class="m">&alpha;</span> &nbsp;<span class="m-up">if</span>&nbsp; <span class="m">x</span> &lt; 0
+    <span class="eq-comment">never zero!</span>
+  </div>
+</div>
+
+<p>Fixes the dying neuron problem. The derivative is never zero: 1 for positive inputs, <span class="m">&alpha;</span> (small but nonzero) for negative inputs. Every neuron always gets <em>some</em> gradient signal. Modern variants: Parametric ReLU (<span class="m">&alpha;</span> is learnable), ELU, GELU (used in GPT/BERT), SiLU/Swish — all designed to keep the gradient nonzero everywhere.</p>
+
+<h3>Summary comparison</h3>
+
+<table class="tbl">
+  <tr><th>Activation</th><th>Derivative range</th><th>Problem</th><th>Status</th></tr>
+  <tr><td>Step</td><td>Always 0</td><td>Zero gradient everywhere</td><td>Unusable</td></tr>
+  <tr><td>Sigmoid</td><td>0 to 0.25</td><td>Vanishing gradient in deep nets</td><td>Rare (output/gate layers)</td></tr>
+  <tr><td>ReLU</td><td>0 or 1</td><td>Dead neurons for x &lt; 0</td><td>Default choice, very common</td></tr>
+  <tr><td>Leaky ReLU</td><td>&alpha; or 1</td><td>None significant</td><td>Popular (and its variants GELU, SiLU)</td></tr>
+</table>
+</div>
+
+<!-- ========== SECTION 6 ========== -->
+<div class="section">
+<h2>6. Partial derivatives and the gradient vector</h2>
+
+<p>So far we've dealt with derivatives of functions of one variable. But a neural network has millions of weights. The loss is a function of <em>all</em> of them: <span class="m">&#x2112;(w₁, w₂, ..., w<sub>n</sub>)</span>.</p>
+
+<p>A <strong>partial derivative</strong> is the derivative with respect to <em>one</em> variable while holding all others constant:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <span class="frac"><span class="num">&part; &#x2112;</span><span class="den">&part; <span class="m">w<sub>k</sub></span></span></span>
+    &nbsp;=&nbsp;
+    lim<sub><span class="m">h</span>&rarr;0</sub>&nbsp;
+    <span class="frac"><span class="num">&#x2112;(<span class="m">w</span>₁, ..., <span class="m">w<sub>k</sub></span>+<span class="m">h</span>, ..., <span class="m">w<sub>n</sub></span>) &minus; &#x2112;(<span class="m">w</span>₁, ..., <span class="m">w<sub>k</sub></span>, ..., <span class="m">w<sub>n</sub></span>)</span><span class="den"><span class="m">h</span></span></span>
+  </div>
+</div>
+
+<p>"If I change <em>just this one weight</em> by a tiny amount, and freeze everything else, how much does the loss change?"</p>
+
+<p>The collection of <em>all</em> partial derivatives is the <strong>gradient vector</strong>:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    &nabla;<sub><span class="m">w</span></sub> &#x2112; &nbsp;=&nbsp;
+    <span class="big-paren">(</span>
+    <span class="frac"><span class="num">&part;&#x2112;</span><span class="den">&part;<span class="m">w</span>₁</span></span> ,&nbsp;
+    <span class="frac"><span class="num">&part;&#x2112;</span><span class="den">&part;<span class="m">w</span>₂</span></span> ,&nbsp;
+    ... ,&nbsp;
+    <span class="frac"><span class="num">&part;&#x2112;</span><span class="den">&part;<span class="m">w<sub>n</sub></span></span></span>
+    <span class="big-paren">)</span>
+  </div>
+</div>
+
+<p>This vector points in the direction of <strong>steepest ascent</strong> in weight-space. Gradient descent steps in the <em>opposite</em> direction:</p>
+
+<div class="eq-block">
+  <div class="eq-line">
+    <strong><span class="m">w</span></strong><sub>new</sub> &nbsp;=&nbsp;
+    <strong><span class="m">w</span></strong><sub>old</sub> &nbsp;&minus;&nbsp;
+    <span class="m">&eta;</span> &nbsp;&middot;&nbsp;
+    &nabla;<sub><span class="m">w</span></sub> &#x2112;
+    <span class="eq-comment">updates ALL weights at once</span>
+  </div>
+</div>
+
+<p>Each weight gets its own nudge, proportional to its own partial derivative. Weights that strongly affect the loss get larger updates. Weights that barely matter get tiny updates. The gradient gives each weight exactly the right amount of correction.</p>
+</div>
+
+<!-- ========== SECTION 7 ========== -->
+<div class="section">
+<h2>7. The full picture: forward pass → backward pass → update</h2>
+
+<div class="step-box">
+  <div class="sb-title">Step 1: Forward pass</div>
+  <div class="sb-desc">Input data flows through the network layer by layer. Each layer does: (a) linear transform (matrix multiply with weights + bias), (b) nonlinear activation. The final output is compared to the target using a loss function, producing a single scalar loss value &#x2112;. Every intermediate value is saved in memory — we'll need them for the backward pass.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">Step 2: Backward pass (backpropagation)</div>
+  <div class="sb-desc">Starting from the loss, we compute &part;&#x2112;/&part;(output of last layer). Then we propagate this backward through each layer using the chain rule. At each layer, we compute the local derivative (how much this layer's output changes per unit change in its input), multiply it into the running product, and also compute the derivative with respect to this layer's weights. By the end, every weight in the network has its own gradient.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">Step 3: Weight update</div>
+  <div class="sb-desc">Every weight is updated simultaneously: <span class="m">w</span><sub>new</sub> = <span class="m">w</span><sub>old</sub> &minus; <span class="m">&eta;</span> &middot; gradient. The weights shift in the direction that reduces the loss. Then we go back to Step 1 with the next batch of training data, and repeat.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">What makes this all possible</div>
+  <div class="sb-desc"><strong>Differentiability.</strong> Every single operation in the forward pass — every matrix multiply, every activation function, the loss function itself — must be differentiable. If any one of them isn't, the chain rule breaks at that point and no gradient can flow past it. All weights before that point are frozen. The entire architecture of modern neural networks is constrained by this single requirement: the gradient must flow, unbroken, from the loss all the way back to every weight.</div>
+</div>
+</div>
+
+<!-- ========== SECTION 8 ========== -->
+<div class="section">
+<h2>8. Tricks for when you need non-differentiable operations</h2>
+
+<p>Sometimes you genuinely <em>need</em> a discrete, non-differentiable operation — like choosing one option out of many, or quantizing a value to integers. Here are the standard workarounds:</p>
+
+<div class="step-box">
+  <div class="sb-title">Straight-through estimator (STE)</div>
+  <div class="sb-desc">Use the non-differentiable function in the forward pass, but <em>pretend</em> the derivative is 1 in the backward pass. The gradient just passes through as if the function were the identity. Crude but effective. Used in binary neural networks and quantization-aware training.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">Gumbel-softmax (concrete relaxation)</div>
+  <div class="sb-desc">Replace a hard categorical choice (argmax) with a soft, differentiable approximation. Instead of picking one option, compute a weighted average where one option dominates. A temperature parameter controls how "hard" the selection is — high temperature gives a soft average, low temperature approximates argmax. Used in VAEs with discrete latent variables.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">Softmax gating</div>
+  <div class="sb-desc">Make the hard choice via argmax (non-differentiable), but <em>multiply the output</em> by the softmax probability (differentiable). The choice doesn't get gradients, but the <em>confidence</em> in the choice does. The router learns by adjusting how confident it is, not by changing which option is selected. Used in Mixture-of-Experts models (Switch Transformer, Mixtral).</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">REINFORCE / policy gradient</div>
+  <div class="sb-desc">Treat the non-differentiable operation as a policy in a reinforcement learning setup. Sample actions from the probability distribution, observe the reward (loss), and update the probabilities using the REINFORCE gradient estimator. Doesn't require differentiability at all, but has high variance and is harder to train. Used in neural architecture search, discrete optimization.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">Residual connections (skip connections)</div>
+  <div class="sb-desc">Not a fix for non-differentiability, but for vanishing gradients. Add the input directly to the output: <span class="m">y = f(x) + x</span>. During backprop, the gradient flows through both <span class="m">f</span> and the identity shortcut. Even if <span class="m">f</span>'s gradient vanishes, the identity provides a gradient of exactly 1. This is why ResNets can train 100+ layers. Nearly all modern architectures use this, including every Transformer.</div>
+</div>
+</div>
+
+<!-- ========== SECTION 9 ========== -->
+<div class="section">
+<h2>9. The five things to remember forever</h2>
+
+<div class="step-box">
+  <div class="sb-title">1. A derivative measures rate of change</div>
+  <div class="sb-desc">"If I nudge the input, how much does the output move, and in which direction?" Positive derivative → output increases. Negative → output decreases. Zero → output doesn't change. It's the slope of the tangent line.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">2. Differentiable means the derivative exists</div>
+  <div class="sb-desc">Smooth curves are differentiable. Sharp corners, jumps, and discontinuities are not. At a non-differentiable point, the function has no single "direction" — and the gradient is undefined.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">3. Gradient descent needs the derivative as a compass</div>
+  <div class="sb-desc">The derivative tells each weight which direction to move to reduce the loss, and by how much. No derivative → the weight is frozen. It has zero information about how to improve.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">4. The chain rule multiplies derivatives across layers</div>
+  <div class="sb-desc">Backpropagation = the chain rule applied backward through the network. The gradient for early-layer weights is the product of all later layers' local derivatives. One zero → dead. Many small values → vanishing. Many large values → exploding.</div>
+</div>
+
+<div class="step-box">
+  <div class="sb-title">5. Every design choice in deep learning serves the gradient</div>
+  <div class="sb-desc">Activation functions (ReLU over sigmoid), residual connections, careful initialization, batch normalization, gradient clipping, learning rate schedules — all exist for one reason: to keep the gradient flowing from the loss back to every weight without dying, vanishing, or exploding. The entire field is an engineering effort to keep the chain rule product healthy.</div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+var blue='#3266ad',orange='#d85a30',teal='#1d9e75',red='#e24b4a';
+var gridC='rgba(0,0,0,0.06)',tickC='rgba(0,0,0,0.4)';
+
+var xs1=[];for(var i=-3;i<=3;i+=0.05)xs1.push(Math.round(i*100)/100);
+var smY=xs1.map(function(x){return x*x;}),knY=xs1.map(function(x){return Math.abs(x);});
+var tgS=[],tgK=[];
+function tangents(xp){
+  var ss=2*xp,sy=xp*xp;
+  tgS=xs1.map(function(x){return sy+ss*(x-xp);});
+  var ks=xp>0?1:(xp<0?-1:null),ky=Math.abs(xp);
+  tgK=xs1.map(function(x){return ks!==null?ky+ks*(x-xp):null;});
+  return{ss:ss,ks:ks};
+}
+tangents(1.5);
+var c1=new Chart(document.getElementById('chart1'),{type:'line',data:{labels:xs1,datasets:[
+  {data:smY,borderColor:blue,borderWidth:2,pointRadius:0,tension:0.4},
+  {data:knY,borderColor:orange,borderWidth:2,pointRadius:0,tension:0},
+  {data:tgS,borderColor:blue,borderWidth:1,borderDash:[6,4],pointRadius:0},
+  {data:tgK,borderColor:orange,borderWidth:1,borderDash:[6,4],pointRadius:0},
+  {data:xs1.map(function(x,i){return Math.abs(x-1.5)<0.06?smY[i]:null;}),backgroundColor:blue,borderColor:blue,pointRadius:7,showLine:false},
+  {data:xs1.map(function(x,i){return Math.abs(x-1.5)<0.06?knY[i]:null;}),backgroundColor:orange,borderColor:orange,pointRadius:7,showLine:false}
+]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},
+scales:{x:{type:'linear',min:-3,max:3,grid:{color:gridC},ticks:{color:tickC,stepSize:1}},y:{min:-2,max:9,grid:{color:gridC},ticks:{color:tickC}}}}});
+
+document.getElementById('xSlider').addEventListener('input',function(){
+  var xp=parseFloat(this.value);
+  document.getElementById('xVal').textContent=xp.toFixed(1);
+  var r=tangents(xp);
+  document.getElementById('smoothSlope').textContent=r.ss.toFixed(1);
+  c1.data.datasets[2].data=tgS;c1.data.datasets[3].data=tgK;
+  c1.data.datasets[4].data=xs1.map(function(x,i){return Math.abs(x-xp)<0.06?smY[i]:null;});
+  c1.data.datasets[5].data=xs1.map(function(x,i){return Math.abs(x-xp)<0.06?knY[i]:null;});
+  if(r.ks!==null){document.getElementById('kinkSlope').textContent=r.ks.toFixed(1);document.getElementById('kinkStatus').innerHTML='<span class="ok">differentiable</span>';}
+  else{document.getElementById('kinkSlope').textContent='???';document.getElementById('kinkStatus').innerHTML='<span class="bad">not differentiable</span>';}
+  c1.update();
+});
+
+var xs2=[];for(var i=-3.5;i<=3.5;i+=0.05)xs2.push(Math.round(i*100)/100);
+var c2=new Chart(document.getElementById('chart2'),{type:'line',data:{labels:xs2,datasets:[
+  {data:xs2.map(function(x){return x*x;}),borderColor:blue,borderWidth:2,pointRadius:0,tension:0.4},
+  {data:xs2.map(function(){return null;}),backgroundColor:red,borderColor:red,pointRadius:8,showLine:false},
+  {data:[],borderColor:red,borderWidth:1,borderDash:[3,3],pointRadius:3,pointBackgroundColor:'rgba(226,75,74,0.4)',showLine:true,tension:0}
+]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:150},plugins:{legend:{display:false}},
+scales:{x:{type:'linear',min:-3.5,max:3.5,grid:{color:gridC},ticks:{color:tickC,stepSize:1}},y:{min:-0.5,max:12,grid:{color:gridC},ticks:{color:tickC}}}}});
+
+function placeBall(xp){
+  c2.data.datasets[1].data=xs2.map(function(x){return Math.abs(x-xp)<0.06?xp*xp:null;});
+  document.getElementById('gdX').textContent=xp.toFixed(2);
+  document.getElementById('gdLoss').textContent=(xp*xp).toFixed(2);
+  document.getElementById('gdGrad').textContent=(2*xp).toFixed(2);
+}
+placeBall(2.5);
+
+var gdSt=document.getElementById('gdStart'),gdLR=document.getElementById('gdLR');
+gdSt.addEventListener('input',function(){
+  document.getElementById('gdStartVal').textContent=parseFloat(this.value).toFixed(1);
+  placeBall(parseFloat(this.value));c2.data.datasets[2].data=[];document.getElementById('gdStep').textContent='0';c2.update();
+});
+gdLR.addEventListener('input',function(){document.getElementById('gdLRVal').textContent=parseFloat(this.value).toFixed(2);});
+
+var anim=null;
+document.getElementById('gdRun').addEventListener('click',function(){
+  if(anim){clearInterval(anim);anim=null;}
+  var x=parseFloat(gdSt.value),lr=parseFloat(gdLR.value),step=0;
+  var path=[{x:x,y:x*x}];c2.data.datasets[2].data=[];
+  anim=setInterval(function(){
+    x=x-lr*2*x;step++;path.push({x:x,y:x*x});
+    c2.data.datasets[2].data=path;placeBall(x);
+    document.getElementById('gdStep').textContent=step;c2.update();
+    if(Math.abs(2*x)<0.01||step>=50){clearInterval(anim);anim=null;}
+  },200);
+});
+document.getElementById('gdReset').addEventListener('click',function(){
+  if(anim){clearInterval(anim);anim=null;}
+  placeBall(parseFloat(gdSt.value));c2.data.datasets[2].data=[];document.getElementById('gdStep').textContent='0';c2.update();
+});
+
+var xs3=[];for(var i=-5;i<=5;i+=0.1)xs3.push(Math.round(i*100)/100);
+function sig(x){return 1/(1+Math.exp(-x));}
+var acts={
+  sigmoid:{fn:sig,grad:function(x){var s=sig(x);return s*(1-s);},diff:'Yes, everywhere',issue:'Vanishes at extremes',used:'Rarely (gates/output)',ymax:2},
+  relu:{fn:function(x){return Math.max(0,x);},grad:function(x){return x>0?1:0;},diff:'Almost (kink at 0)',issue:'Dead neurons for x<0',used:'Default choice',ymax:5},
+  step:{fn:function(x){return x>=0?1:0;},grad:function(){return 0;},diff:'No',issue:'Gradient = 0 everywhere',used:'Unusable',ymax:2},
+  leaky:{fn:function(x){return x>=0?x:0.1*x;},grad:function(x){return x>=0?1:0.1;},diff:'Yes, everywhere',issue:'None significant',used:'Popular (GELU, SiLU)',ymax:5}
+};
+var c3=new Chart(document.getElementById('chart3'),{type:'line',data:{labels:xs3,datasets:[
+  {data:xs3.map(sig),borderColor:blue,borderWidth:2,pointRadius:0,tension:0.2},
+  {data:xs3.map(function(x){var s=sig(x);return s*(1-s);}),borderColor:teal,borderWidth:2,borderDash:[6,3],pointRadius:0,tension:0.2}
+]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},plugins:{legend:{display:false}},
+scales:{x:{type:'linear',min:-5,max:5,grid:{color:gridC},ticks:{color:tickC,stepSize:2}},y:{min:-1,max:2,grid:{color:gridC},ticks:{color:tickC}}}}});
+
+document.getElementById('actSelect').addEventListener('change',function(){
+  var a=acts[this.value];
+  c3.data.datasets[0].data=xs3.map(a.fn);c3.data.datasets[1].data=xs3.map(a.grad);
+  c3.options.scales.y.max=a.ymax;c3.update();
+  document.getElementById('actDiff').textContent=a.diff;
+  document.getElementById('actIssue').textContent=a.issue;
+  document.getElementById('actUsed').textContent=a.used;
+});
+
+var scenarios={
+  healthy:{vals:[0.8,0.8,0.8,0.8],labels:['dL/dL3','dL3/dL2','dL2/dL1','dL1/dw1'],dead:[]},
+  zero:{vals:[0.8,0.8,0,0.8],labels:['dL/dL3','dL3/dL2','dL2/dL1','dL1/dw1'],dead:[2]},
+  vanish:{vals:[0.1,0.1,0.1,0.1],labels:['dL/dL3','dL3/dL2','dL2/dL1','dL1/dw1'],dead:[]},
+  explode:{vals:[3,3,3,3],labels:['dL/dL3','dL3/dL2','dL2/dL1','dL1/dw1'],dead:[]}
+};
+function renderChain(key){
+  var s=scenarios[key];
+  var prod=s.vals.reduce(function(a,b){return a*b;},1);
+  var html='<div class="chain-row">';
+  s.vals.forEach(function(v,i){
+    if(i>0)html+='<span class="chain-arrow">\u00D7</span>';
+    var cls=s.dead.indexOf(i)>=0?'chain-box dead':'chain-box';
+    html+='<span class="'+cls+'">'+s.labels[i]+' = '+v+'</span>';
+  });
+  html+='<span class="chain-arrow">=</span><span class="chain-box" style="font-weight:700;">'+prod.toFixed(4)+'</span></div>';
+  document.getElementById('chainViz').innerHTML=html;
+  document.getElementById('chainResult').textContent=prod.toFixed(4);
+  var verdict;
+  if(prod===0)verdict='<span class="bad">gradient is dead — no learning</span>';
+  else if(prod<0.001)verdict='<span class="bad">vanishing — almost no learning</span>';
+  else if(prod>10)verdict='<span class="bad">exploding — training unstable</span>';
+  else verdict='<span class="ok">healthy — learning happens</span>';
+  document.getElementById('chainVerdict').innerHTML=verdict;
+}
+renderChain('healthy');
+document.getElementById('chainSelect').addEventListener('change',function(){renderChain(this.value);});
+</script>
+
+</body>
+</html>
